@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import "./globals.css";
+import { SiteHeader } from "./_components/SiteHeader";
 
 export const metadata = {
   title: "Naruhodo+",
@@ -8,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <SiteHeader />
+        <main className="container">{children}</main>
+      </body>
     </html>
   );
 }

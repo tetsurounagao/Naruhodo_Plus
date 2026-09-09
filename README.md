@@ -43,9 +43,11 @@ AI エージェントへの登録方法（`claude mcp add` / Codex の `config.t
 npm run dev:web
 ```
 
-開発サーバーが `http://localhost:3000` で起動する。
+開発サーバーが `http://localhost:3000` で起動する。ビルドして使う場合は `web/` で `npm run build && npm start`。
 
-※ 実装は未着手。現状は雛形のみ。
+ログインは Supabase Auth（メール＋パスワード）。ユーザーは Supabase ダッシュボードの Authentication → Add user で作成する。画面・API ルート一覧・アーキテクチャは [web/README.md](web/README.md) を参照。
+
+実装済み画面: `/login` / `/`（ホーム）/ `/quizzes` / `/knowledge`。
 
 ## 環境変数
 
