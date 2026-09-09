@@ -1,6 +1,6 @@
 import { requireUser } from "../../../lib/auth";
 import { handle, ok } from "../../../lib/http";
-import { listQuizzes } from "../../../lib/queries";
+import { searchQuizzes } from "../../../lib/queries";
 import type { QuizSortKey, QuizStatusFilter } from "../../../lib/types";
 
 const STATUSES: QuizStatusFilter[] = ["all", "unanswered", "answered"];
@@ -33,14 +33,14 @@ export const GET = handle(async (req) => {
   const minStarRaw = Number(p.get("minStar"));
   const minStar = Number.isFinite(minStarRaw) ? minStarRaw : undefined;
 
-  const quizzes = await listQuizzes({
-    tag: p.get("tag") ?? undefined,
+  const quizzes = await searchQuizzes({
+    q: p.get("q") ?? undefined,
     tags,
     status,
     sort,
     minStar,
-    unansweredOnly: p.get("unanswered") === "1",
-    limit: p.get("limit") ? Number(p.get("limit")) : undefined,
+    includeNote: p.get("note") === "1",
+    includeLinkTitles: p.get("titles") === "1",
   });
   return ok({ quizzes });
 });

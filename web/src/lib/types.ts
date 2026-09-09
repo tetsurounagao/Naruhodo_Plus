@@ -8,6 +8,14 @@ export interface QuizChoice {
   language?: string;
 }
 
+export interface QuizLink {
+  id: string;
+  url: string;
+  title: string | null;
+  title_status: "pending" | "ok" | "failed";
+  created_at: string;
+}
+
 /** 一覧・解答画面向け。correct_answer / explanation は解答前は含めない。 */
 export interface QuizPublic {
   id: string;
@@ -18,12 +26,32 @@ export interface QuizPublic {
   created_at: string;
   attempt_count: number;
   last_correct: boolean | null;
+  last_answered_at: string | null;
+  star: number;
+  note: string | null;
+  /** getQuizForAnswering / search の詳細取得時のみ含む */
+  links?: QuizLink[];
 }
 
 export interface AttemptResult {
   is_correct: boolean;
   correct_answer: string;
   explanation: string | null;
+}
+
+export type QuizStatusFilter = "all" | "unanswered" | "answered";
+export type QuizSortKey =
+  | "created_desc"
+  | "created_asc"
+  | "answered_desc"
+  | "answered_asc";
+
+/** 復習おすすめ 1 件（QuizPublic + 経過情報）。 */
+export interface ReviewItem extends QuizPublic {
+  /** 最終回答からの経過日数（切り捨て） */
+  days_since: number;
+  /** 経過日数 − 推奨間隔。大きいほど「やるべき」 */
+  overdue_days: number;
 }
 
 export interface KnowledgeItem {
