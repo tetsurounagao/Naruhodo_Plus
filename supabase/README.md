@@ -45,8 +45,9 @@ supabase db reset  # migrations/ を最初から流し直す
 | `knowledge_items` | table | 学び本体（question, answer, context, source） |
 | `tags` | table | タグのマスタ（name は正規化済み・unique） |
 | `knowledge_item_tags` | table | 学び × タグ（多対多） |
-| `quizzes` | table | クイズ本体（choices jsonb, correct_answer は選択肢 id） |
+| `quizzes` | table | クイズ本体（choices jsonb, correct_answer は選択肢 id, star, note, last_answered_at） |
 | `quiz_tags` | table | クイズ × タグ（多対多） |
 | `quiz_attempts` | table | 解答履歴（user_answer, is_correct） |
+| `quiz_links` | table | クイズの参考 URL（title は非同期取得, title_status: pending/ok/failed） |
 | `knowledge_items_unquizzed` | view | クイズ未生成の学び一覧 |
 | `tag_stats` | view | タグ別の解答回数・正答数・正答率（閾値適用はアプリ側） |
