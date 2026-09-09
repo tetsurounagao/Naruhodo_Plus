@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiGet } from "../lib/client";
 import type { KnowledgeItem, QuizPublic, TagStat } from "../lib/types";
+import { TagPie } from "./_components/TagPie";
 
 export default function HomePage() {
   const [stats, setStats] = useState<TagStat[] | null>(null);
@@ -42,6 +43,15 @@ export default function HomePage() {
           <Link href="/knowledge">一覧</Link>）
         </p>
       </div>
+
+      <h2>出題の内訳</h2>
+      {stats === null ? (
+        <p className="muted">読み込み中…</p>
+      ) : (
+        <div className="card">
+          <TagPie stats={stats} />
+        </div>
+      )}
 
       <h2>要復習タグ</h2>
       {stats === null ? (

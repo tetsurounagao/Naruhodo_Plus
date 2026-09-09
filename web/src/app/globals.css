@@ -182,6 +182,63 @@ ul.choices button.wrong {
   color: var(--danger);
 }
 
+/* タグ別の出題比率（円グラフ） */
+.tagpie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+.tagpie-svg {
+  width: 160px;
+  height: 160px;
+  flex: none;
+  transform: rotate(0deg);
+}
+.tagpie-total {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--text);
+}
+.tagpie-unit {
+  font-size: 4px;
+  fill: var(--muted);
+}
+.tagpie-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.tagpie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+}
+.tagpie-legend .sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.tagpie-breakdown {
+  flex-basis: 100%;
+  font-size: 0.88rem;
+}
+.tagpie-breakdown summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.tagpie-breakdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.tagpie-breakdown li {
+  margin: 2px 0;
+}
+
 /* Markdown 本文 */
 .md > :first-child {
   margin-top: 0;

@@ -40,6 +40,8 @@ export interface KnowledgeItem {
 export interface TagStat {
   tag_id: string;
   tag_name: string;
+  /** そのタグが付いたクイズの数（出題比率の分子） */
+  quiz_count: number;
   total_attempts: number;
   correct_attempts: number;
   accuracy: number | null;

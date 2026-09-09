@@ -215,11 +215,22 @@ export async function listTagStats(): Promise<TagStat[]> {
       .select("*")
       .order("total_attempts", { ascending: false }),
     "tag_stats 取得",
-  ) as Omit<TagStat, "weak">[];
+  ) as Omit<TagStat, "weak" | "quiz_count">[];
+
+  // タグ別のクイズ数（出題比率用）。quiz_tags を全件取ってコード側で集計。
+  const qtRows = must(
+    await supabase.from("quiz_tags").select("tag_id"),
+    "quiz_tags 取得",
+  ) as { tag_id: string }[];
+  const quizCountByTag = new Map<string, number>();
+  for (const r of qtRows) {
+    quizCountByTag.set(r.tag_id, (quizCountByTag.get(r.tag_id) ?? 0) + 1);
+  }
 
   const { minAttempts, maxAccuracy } = weakTagThreshold;
   return rows.map((r) => ({
     ...r,
+    quiz_count: quizCountByTag.get(r.tag_id) ?? 0,
     weak:
       r.total_attempts >= minAttempts &&
       r.accuracy !== null &&
