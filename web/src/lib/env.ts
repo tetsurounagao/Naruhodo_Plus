@@ -1,18 +1,24 @@
-/** サーバー側で使う環境変数。未設定なら早期に落とす。 */
+/** サーバー側で使う環境変数。各値は初回アクセス時に検証する（未設定なら例外）。 */
 
 function required(name: string): string {
   const value = process.env[name];
   if (!value || value.trim() === "") {
-    throw new Error(`環境変数 ${name} が未設定です（web/.env.local を確認）`);
+    throw new Error(`環境変数 ${name} が未設定です（web/.env.local / Vercel の Environment Variables を確認）`);
   }
   return value.trim();
 }
 
 export const env = {
-  supabaseUrl: required("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, ""),
-  supabaseAnonKey: required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  /** service role / secret key。API ルート内でのみ参照すること。 */
-  supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
+  get supabaseUrl() {
+    return required("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, "");
+  },
+  get supabaseAnonKey() {
+    return required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  },
+  /** service role / secret key。API ルート（Node ランタイム）内でのみ参照すること。 */
+  get supabaseServiceRoleKey() {
+    return required("SUPABASE_SERVICE_ROLE_KEY");
+  },
 };
 
 // 苦手タグ判定の閾値（要件 9。暫定値、環境変数で変更可）
