@@ -12,9 +12,10 @@ npm workspaces によるモノレポ。
 | --- | --- | --- |
 | `mcp-server/` | AIエージェントからの知識登録・クイズ保存を受ける MCP サーバー | TypeScript / Node.js（stdio 接続） |
 | `web/` | 蓄積した知識の閲覧とクイズ復習を行う Web アプリ | TypeScript / Next.js（Vercel デプロイ） |
+| `supabase/` | DB マイグレーション SQL と適用手順 | Supabase（PostgreSQL） |
 | `docs/` | 要件定義書などのドキュメント | — |
 
-DB は Supabase（PostgreSQL）、認証は Supabase Auth を利用する。ブラウザは Supabase に直接接続せず、必ず Next.js の API ルートを経由する。
+DB は Supabase（PostgreSQL）、認証は Supabase Auth を利用する。ブラウザは Supabase に直接接続せず、必ず Next.js の API ルートを経由する。スキーマの適用方法は [supabase/README.md](supabase/README.md) を参照。
 
 ## セットアップ
 
