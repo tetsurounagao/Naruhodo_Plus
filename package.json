@@ -1,0 +1,19 @@
+{
+  "name": "naruhodo-plus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "業務・学習中の疑問と回答を蓄積し、選択式クイズを自動生成して復習する個人用ツール",
+  "workspaces": [
+    "mcp-server",
+    "web"
+  ],
+  "scripts": {
+    "dev:mcp": "npm run dev --workspace mcp-server",
+    "dev:web": "npm run dev --workspace web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

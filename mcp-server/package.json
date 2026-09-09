@@ -1,0 +1,23 @@
+{
+  "name": "@naruhodo-plus/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Naruhodo+ の MCP サーバー（stdio 接続）",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "naruhodo-plus-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^20.14.0"
+  }
+}
