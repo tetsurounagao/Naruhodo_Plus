@@ -71,8 +71,8 @@ export async function listQuizzes(opts: {
     .order("created_at", { ascending: false });
   if (quizIdFilter) query = query.in("id", [...quizIdFilter]);
 
-  const rows = must(await query, "quizzes 取得") as any[];
-  const agg = await attemptAggByQuiz();
+  const [rowsRes, agg] = await Promise.all([query, attemptAggByQuiz()]);
+  const rows = must(rowsRes, "quizzes 取得") as any[];
 
   const items: QuizPublic[] = rows.map((row) => {
     const tags: string[] = (row.quiz_tags ?? [])
@@ -99,20 +99,20 @@ export async function listQuizzes(opts: {
 
 export async function getQuizForAnswering(id: string): Promise<QuizPublic | null> {
   const supabase = getSupabaseAdmin();
-  const row = must(
-    await supabase
+  const [rowRes, agg] = await Promise.all([
+    supabase
       .from("quizzes")
       .select("id, question, choices, created_by, created_at, quiz_tags(tags(name))")
       .eq("id", id)
       .maybeSingle(),
-    "quiz 取得",
-  ) as any | null;
+    attemptAggByQuiz(),
+  ]);
+  const row = must(rowRes, "quiz 取得") as any | null;
   if (!row) return null;
 
   const tags: string[] = (row.quiz_tags ?? [])
     .map((l: any) => l.tags?.name)
     .filter((n: unknown): n is string => typeof n === "string");
-  const agg = await attemptAggByQuiz();
   const a = agg.get(id) ?? { count: 0, lastCorrect: null, lastAt: null };
 
   return {
@@ -171,21 +171,20 @@ export async function gradeAndRecord(
 export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem[]> {
   const supabase = getSupabaseAdmin();
 
-  const quizRows = must(
-    await supabase.from("quizzes").select("source_knowledge_id"),
-    "quizzes 集計",
-  ) as { source_knowledge_id: string | null }[];
-  const quizzed = new Set(
-    quizRows.map((r) => r.source_knowledge_id).filter((v): v is string => Boolean(v)),
-  );
-
-  const rows = must(
-    await supabase
+  const [quizRes, rowsRes] = await Promise.all([
+    supabase.from("quizzes").select("source_knowledge_id"),
+    supabase
       .from("knowledge_items")
       .select("*, knowledge_item_tags(tags(name))")
       .order("created_at", { ascending: false }),
-    "knowledge_items 取得",
-  ) as any[];
+  ]);
+  const quizRows = must(quizRes, "quizzes 集計") as {
+    source_knowledge_id: string | null;
+  }[];
+  const quizzed = new Set(
+    quizRows.map((r) => r.source_knowledge_id).filter((v): v is string => Boolean(v)),
+  );
+  const rows = must(rowsRes, "knowledge_items 取得") as any[];
 
   return rows
     .filter((r) => !quizzed.has(r.id))
@@ -209,19 +208,17 @@ export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem
 
 export async function listTagStats(): Promise<TagStat[]> {
   const supabase = getSupabaseAdmin();
-  const rows = must(
-    await supabase
-      .from("tag_stats")
-      .select("*")
-      .order("total_attempts", { ascending: false }),
-    "tag_stats 取得",
-  ) as Omit<TagStat, "weak" | "quiz_count">[];
+  const [statsRes, qtRes] = await Promise.all([
+    supabase.from("tag_stats").select("*").order("total_attempts", { ascending: false }),
+    supabase.from("quiz_tags").select("tag_id"),
+  ]);
+  const rows = must(statsRes, "tag_stats 取得") as Omit<
+    TagStat,
+    "weak" | "quiz_count"
+  >[];
 
   // タグ別のクイズ数（出題比率用）。quiz_tags を全件取ってコード側で集計。
-  const qtRows = must(
-    await supabase.from("quiz_tags").select("tag_id"),
-    "quiz_tags 取得",
-  ) as { tag_id: string }[];
+  const qtRows = must(qtRes, "quiz_tags 取得") as { tag_id: string }[];
   const quizCountByTag = new Map<string, number>();
   for (const r of qtRows) {
     quizCountByTag.set(r.tag_id, (quizCountByTag.get(r.tag_id) ?? 0) + 1);
@@ -236,4 +233,22 @@ export async function listTagStats(): Promise<TagStat[]> {
       r.accuracy !== null &&
       r.accuracy < maxAccuracy,
   }));
+}
+
+/** ホーム画面が必要とするものを 1 回の呼び出しでまとめて返す。 */
+export async function homeSummary(): Promise<{
+  stats: TagStat[];
+  unanswered: number;
+  unquizzed: number;
+}> {
+  const [stats, unansweredQuizzes, unquizzed] = await Promise.all([
+    listTagStats(),
+    listQuizzes({ unansweredOnly: true }),
+    listUnquizzedKnowledge(),
+  ]);
+  return {
+    stats,
+    unanswered: unansweredQuizzes.length,
+    unquizzed: unquizzed.length,
+  };
 }

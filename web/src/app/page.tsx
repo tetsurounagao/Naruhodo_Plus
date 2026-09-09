@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiGet } from "../lib/client";
-import type { KnowledgeItem, QuizPublic, TagStat } from "../lib/types";
+import type { TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
 
 export default function HomePage() {
@@ -13,15 +13,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      apiGet<{ stats: TagStat[] }>("/api/tag-stats"),
-      apiGet<{ quizzes: QuizPublic[] }>("/api/quizzes?unanswered=1"),
-      apiGet<{ knowledge: KnowledgeItem[] }>("/api/knowledge?unquizzed=1"),
-    ])
-      .then(([s, q, k]) => {
-        setStats(s.stats);
-        setUnanswered(q.quizzes.length);
-        setUnquizzed(k.knowledge.length);
+    apiGet<{ stats: TagStat[]; unanswered: number; unquizzed: number }>("/api/home")
+      .then((d) => {
+        setStats(d.stats);
+        setUnanswered(d.unanswered);
+        setUnquizzed(d.unquizzed);
       })
       .catch((e: Error) => setError(e.message));
   }, []);
