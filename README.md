@@ -46,4 +46,11 @@ npm run dev:web
 
 ## 環境変数
 
-`.env` はコミットしない。必要なキー（Supabase の URL / service role key など）は各ディレクトリの `.env.local` に置く。詳細は実装時に別途整理する。
+各ディレクトリの `.env.example` をコピーして `.env.local` を作り、実際の値を入れる。`.env.local` はコミットしない。
+
+```bash
+cp mcp-server/.env.example mcp-server/.env.local
+cp web/.env.example web/.env.local
+```
+
+必要な値（Supabase の API URL / Publishable key / Secret key）は Supabase ダッシュボードの Settings → API から取得する。
