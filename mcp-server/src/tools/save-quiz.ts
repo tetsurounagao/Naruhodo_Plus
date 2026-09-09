@@ -6,6 +6,13 @@ import { insertQuiz, knowledgeExists } from "../db.js";
 
 const DESCRIPTION = `会話で生成した選択式クイズを1問保存する。list_knowledge で取得した学びをもとに作る。
 
+## いつ呼ぶか（自然文トリガー）
+- 「クイズ作って」「これのクイズ作って」「復習問題を作って」等と言われたとき。
+  元にする学びが会話に無ければ list_knowledge（unquizzed_only: true 等）で取得してから作る。
+- 「メモとクイズを両方作って」と言われたときは、先に add_knowledge（プレビューONなら
+  confirm_knowledge まで）で学びを保存し、確定で返る id を source_knowledge_id に渡す。
+- スラッシュコマンドに頼らず、この自然文で発火してよい。
+
 ## 作り方の指針
 - 選択式のみ。選択肢は3〜5個。正解はちょうど1つ。
 - choices は各要素 { id, type, content } の配列。

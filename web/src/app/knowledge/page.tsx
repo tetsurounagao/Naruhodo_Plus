@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/client";
 import type { KnowledgeItem } from "../../lib/types";
+import { Markdown } from "../_components/Markdown";
 
 function buildPrompt(k: KnowledgeItem): string {
   return [
@@ -57,7 +58,7 @@ export default function KnowledgePage() {
         items.map((k) => (
           <div className="card" key={k.id}>
             <p style={{ fontWeight: 600 }}>{k.question}</p>
-            <p>{k.answer}</p>
+            <Markdown>{k.answer}</Markdown>
             {k.context && (
               <p className="muted" style={{ fontSize: "0.85rem" }}>
                 context: {k.context}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
+import { Markdown } from "../_components/Markdown";
 
 export default function QuizzesPage() {
   const [quizzes, setQuizzes] = useState<QuizPublic[] | null>(null);
@@ -156,7 +157,7 @@ function QuizRunner({ id, onDone }: { id: string; onDone: () => void }) {
           <p className={result.is_correct ? "result-ok" : "result-ng"}>
             {result.is_correct ? "正解" : "不正解"}
           </p>
-          {result.explanation && <p>{result.explanation}</p>}
+          {result.explanation && <Markdown>{result.explanation}</Markdown>}
           <button onClick={onDone}>一覧に戻る</button>
         </>
       )}
