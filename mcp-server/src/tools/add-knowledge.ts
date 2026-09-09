@@ -14,17 +14,36 @@ const DESCRIPTION = `業務や学習の中で得た「疑問」と「その回�
 雑談や、回答が定まっていない相談段階では呼ばない。
 
 ## 保存前に必ず行う抽象化（機密情報対策の1段目）
-question / answer / context から次を取り除き、技術的な概念だけが残るよう一般化してから渡すこと:
-- 会社名・製品名・チーム名・人名などの固有名詞
-- 社内システム名、社内URL、社内用語、リポジトリ名、チケット番号
-- 具体的な数値のうち businesses を特定しうるもの
-例: 「◯◯社の決済APIで tax_rate が…」→「決済処理で税率の設定が…」
+question / answer / context / コード から、業務・組織を特定しうる情報を取り除き、
+技術的な概念だけが残るよう一般化してから渡すこと。
+
+### 取り除く / 置き換える
+- 会社名・製品名・サービス名・チーム名・人名などの固有名詞
+- 社内システム名、社内URL・ホスト名、社内用語、リポジトリ名、パッケージ名
+- チケットID（例: ABC-1234）、PR/Issue 番号、Slack チャンネル名
+- ドメインに紐づく識別子: 業務固有のクラス名・関数名・変数名・テーブル名・カラム名
+  （例: OrderTaxCalculator → TaxCalculator、shain_kbn → userType）
+- 社内処理を説明する日本語コメント、業務ルールの数値で組織を特定しうるもの
+
+### そのまま残してよい
+- プログラミング言語のキーワード・構文（const, async, satisfies など）
+- 標準ライブラリ / 有名フレームワークの API 名・オプション名
+- 学びの核になる一般的な概念・アルゴリズム・型の説明
+
+例: 「◯◯社の決済APIで OrderTaxService.calc() が tax_rate を…」
+  → 「決済処理で税額計算の関数に税率を渡すと…」
+
 APIキー・トークン・メールアドレス・社内ドメインが本文に残っていると、サーバー側で保存を拒否する。
+
+## 抽象化メモ（プレビューON時は必須）
+abstraction_note に「元の何を、何に置き換えたか」を1〜3行で書く。
+プレビュー表示に含めてユーザーが確認できるようにするため。
+置き換えが不要だった場合は「業務固有情報なし」と書く。
 
 ## コード例を含める場合
 answer / question に短いコード例を入れてよい。ただし:
 - Markdown のコードフェンス（\`\`\`言語 … \`\`\`）で囲む。Web 画面はこれを整形表示する。
-- 社内固有のクラス名・パス・識別子を含まない、最小限の汎用サンプルに書き換える。
+- 上記の抽象化ルールをコードにも適用し、社内固有の識別子は汎用名に置き換える。
 - 長い実コードの貼り付けは避け、要点が分かる数行に絞る。
 
 ## tags の付け方
@@ -59,6 +78,12 @@ const shape = {
     .array(z.string())
     .default([])
     .describe("タグ。半角英数の短い文字列の配列。既存タグは表記を使い回す"),
+  abstraction_note: z
+    .string()
+    .optional()
+    .describe(
+      "元の何を何に置き換えて抽象化したかの短いメモ（1〜3行）。プレビューONなら必須。業務固有情報が無ければ「業務固有情報なし」",
+    ),
 };
 
 function sensitiveError(hits: ReturnType<typeof scanSensitive>["hits"]): string {
@@ -78,7 +103,7 @@ export function registerAddKnowledge(server: McpServer, ctx: ToolContext): void 
       description: DESCRIPTION,
       inputSchema: shape,
     },
-    async ({ question, answer, context, source, tags }) => {
+    async ({ question, answer, context, source, tags, abstraction_note }) => {
       const scan = scanSensitive({ question, answer, context, source });
       if (!scan.ok) {
         return {
@@ -97,14 +122,17 @@ export function registerAddKnowledge(server: McpServer, ctx: ToolContext): void 
           source,
           tags: normalizedTags,
         });
+        const note = abstraction_note?.trim();
         const preview = [
-          "以下の内容で保存します。よければ confirm_knowledge に draft_token を渡してください。",
+          "以下の内容で保存します。抽象化メモを確認し、問題なければ confirm_knowledge に draft_token を渡してください。",
           "",
           `Q: ${question}`,
           `A: ${answer}`,
           context ? `context: ${context}` : null,
           source ? `source: ${source}` : null,
           `tags: ${normalizedTags.join(", ") || "(なし)"}`,
+          "",
+          `抽象化メモ: ${note || "（未記入。業務由来の内容なら、何を伏せたか確認してください）"}`,
           "",
           `draft_token: ${token}`,
         ]

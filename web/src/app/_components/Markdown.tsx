@@ -1,16 +1,20 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/vs2015.css";
 
 /**
  * 学びの本文・クイズ解説を Markdown として整形表示する。
- * コードフェンス（```）は <pre><code> になり、globals.css で等幅・枠付きに整形する。
- * シンタックスハイライトは今は入れない（必要になったら rehype 系を追加）。
+ * コードフェンス（```lang）は highlight.js（vs2015 テーマ = VS Code 風ダーク）で色付けする。
+ * より忠実にしたくなったら rehype-highlight を @shikijs/rehype に差し替える。
  */
 export function Markdown({ children }: { children: string }) {
   return (
     <div className="md">
-      <ReactMarkdown>{children}</ReactMarkdown>
+      <ReactMarkdown rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}>
+        {children}
+      </ReactMarkdown>
     </div>
   );
 }

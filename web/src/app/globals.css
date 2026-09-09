@@ -140,6 +140,24 @@ ul.choices button.selected {
   background: var(--accent-weak);
 }
 
+/* コード選択肢（button 内なので pre は使わず code をブロック表示） */
+code.choice-code {
+  display: block;
+  white-space: pre;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  background: #1e1e1e;
+  color: #dcdcdc;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+/* 設問文（Markdown）。段落だけ太字にしてコードブロックは通常表示 */
+.md-q > .md > p {
+  font-weight: 600;
+}
+
 ul.choices button.correct {
   border-color: var(--ok);
   background: #e2f0e8;
@@ -175,13 +193,20 @@ ul.choices button.wrong {
   margin: 8px 0;
 }
 .md pre {
-  background: #1c1c1a;
-  color: #f2f2ef;
-  padding: 12px 14px;
+  margin: 8px 0;
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   font-size: 0.85rem;
   line-height: 1.5;
+}
+/* highlight.js が付ける .hljs（vs2015 テーマ）が背景・字色・トークン色を担当。
+   ハイライトが効かなかったコードブロックのためのフォールバックが下の :not(.hljs)。 */
+.md pre code:not(.hljs) {
+  display: block;
+  padding: 1em;
+  overflow-x: auto;
+  background: #1e1e1e;
+  color: #dcdcdc;
 }
 .md code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -192,11 +217,6 @@ ul.choices button.wrong {
   color: var(--accent);
   padding: 1px 5px;
   border-radius: 4px;
-}
-.md pre code {
-  background: none;
-  color: inherit;
-  padding: 0;
 }
 .md ul,
 .md ol {

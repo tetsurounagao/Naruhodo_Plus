@@ -2,8 +2,10 @@
 
 export interface QuizChoice {
   id: string;
-  type: "text" | "image";
+  type: "text" | "image" | "code";
   content: string;
+  /** type === "code" のときのハイライト言語 */
+  language?: string;
 }
 
 /** 一覧・解答画面向け。correct_answer / explanation は解答前は含めない。 */

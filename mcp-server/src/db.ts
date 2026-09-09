@@ -22,8 +22,10 @@ export interface KnowledgeWithTags extends KnowledgeRow {
 
 export interface QuizChoice {
   id: string;
-  type: "text" | "image";
+  type: "text" | "image" | "code";
   content: string;
+  /** type が "code" のときのシンタックスハイライト言語 */
+  language?: string;
 }
 
 export interface SaveQuizInput {

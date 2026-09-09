@@ -15,27 +15,42 @@ const DESCRIPTION = `会話で生成した選択式クイズを1問保存する�
 
 ## 作り方の指針
 - 選択式のみ。選択肢は3〜5個。正解はちょうど1つ。
-- choices は各要素 { id, type, content } の配列。
+- choices は各要素 { id, type, content, language? } の配列。
   - id: "a" "b" "c" ... のような短い識別子。
-  - type: 現状は "text" のみ（画像対応は将来拡張。今は text 固定でよい）。
-  - content: 選択肢の表示文字列。
+  - type: "text"（文字列）/ "code"（コード片。等幅＋シンタックスハイライト表示）/ "image"（画像URL）。
+  - content: 表示内容。type が "code" ならコード文字列そのもの、"image" なら画像URL。
+  - language: type が "code" のときのハイライト言語（"ts" "python" "sql" など）。任意。
 - correct_answer: 正解の選択肢の id（content ではなく id）。
-- explanation: なぜその答えになるかの簡潔な解説。
+- explanation: なぜその答えになるかの簡潔な解説。Markdown 可。コードは \`\`\` フェンスで。
 - source_knowledge_id: 元にした学びの id（list_knowledge の [id]）。分かる場合は必ず付ける。
 - tags: 元の学びのタグを引き継ぐ。半角英数の短い文字列。表記ゆれは自動正規化。
 
+## コードを含む問題・穴埋め
+- question に Markdown のコードフェンス（\`\`\`言語 … \`\`\`）を入れてよい。Web 画面が整形表示する。
+- 穴埋めにする場合、question のコード内の空所を \`____\`（アンダースコア4つ）で表す。
+  空所は1問につき1箇所。選択肢（多くは type: "code"）から正しい断片を1つ選ばせる。
+- 例: question に \`const x = arr.____(f);\`、choices が map / flatMap / filter の3つ。
+
 ## 注意
-- 機密情報の抽象化は add_knowledge 時点で済んでいる前提。クイズ文にも固有名詞を持ち込まない。
+- 機密情報の抽象化は add_knowledge 時点で済んでいる前提。クイズ文・コードにも社内固有の
+  識別子や固有名詞を持ち込まない。持ち込む必要があるなら汎用名に置き換える。
 - 同じ学びから複数問できても構わない。重複は気にせず保存してよい。
 - 生成AI名はサーバーが created_by に自動記録する。`;
 
 const choiceSchema = z.object({
   id: z.string().min(1).describe('選択肢の識別子（"a" など）'),
   type: z
-    .enum(["text", "image"])
+    .enum(["text", "image", "code"])
     .default("text")
-    .describe('現状は "text" 固定'),
-  content: z.string().min(1).describe("表示文字列（image の場合は画像URL）"),
+    .describe('"text" / "code"（コード片）/ "image"（画像URL）'),
+  content: z
+    .string()
+    .min(1)
+    .describe('表示内容。"code" ならコード文字列、"image" なら画像URL'),
+  language: z
+    .string()
+    .optional()
+    .describe('type が "code" のときのハイライト言語（"ts" 等）。任意'),
 });
 
 const shape = {
@@ -117,6 +132,7 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
           id: c.id,
           type: c.type,
           content: c.content,
+          ...(c.type === "code" && c.language ? { language: c.language } : {}),
         })),
         correctAnswer: correct_answer,
         explanation,

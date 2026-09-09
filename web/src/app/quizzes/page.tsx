@@ -59,7 +59,9 @@ export default function QuizzesPage() {
             />
           ) : (
             <div className="card" key={q.id}>
-              <p style={{ fontWeight: 600 }}>{q.question}</p>
+              <div className="md-q">
+                <Markdown>{q.question}</Markdown>
+              </div>
               <div>
                 {q.tags.map((t) => (
                   <span className="tag" key={t}>
@@ -120,7 +122,9 @@ function QuizRunner({ id, onDone }: { id: string; onDone: () => void }) {
 
   return (
     <div className="card">
-      <p style={{ fontWeight: 600 }}>{quiz.question}</p>
+      <div className="md-q">
+        <Markdown>{quiz.question}</Markdown>
+      </div>
       <ul className="choices">
         {quiz.choices.map((c) => {
           let cls = "";
@@ -137,7 +141,13 @@ function QuizRunner({ id, onDone }: { id: string; onDone: () => void }) {
                 disabled={!!result}
                 onClick={() => setSelected(c.id)}
               >
-                {c.content}
+                {c.type === "code" ? (
+                  <code className="choice-code">{c.content}</code>
+                ) : c.type === "image" ? (
+                  <img src={c.content} alt="" />
+                ) : (
+                  c.content
+                )}
               </button>
             </li>
           );
