@@ -2,6 +2,8 @@
 
 `web/` を Vercel にデプロイする。MCP サーバーはローカル PC で動かすものなのでデプロイ対象外。
 
+現在の本番: <https://naruhodo-plus-web.vercel.app>（`main` への push で自動再デプロイ）
+
 ## 前提
 
 - GitHub にリポジトリが push 済み（`tetsurounagao/Naruhodo_Plus`）
