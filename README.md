@@ -31,9 +31,11 @@ npm install
 npm run dev:mcp
 ```
 
-stdio で待ち受ける MCP サーバーが起動する。AIエージェント側の MCP 設定から、このプロセスをコマンドとして登録して接続する。
+stdio で待ち受ける MCP サーバーが起動する。ビルドして使う場合は `mcp-server/` で `npm run build && npm start`。
 
-※ 実装は未着手。現状は雛形のみ。
+AI エージェントへの登録方法（`claude mcp add` / Codex の `config.toml` 等）、ツール一覧、環境変数は [mcp-server/README.md](mcp-server/README.md) を参照。
+
+実装済みツール: `add_knowledge` / `confirm_knowledge` / `list_knowledge` / `save_quiz` / `get_tag_stats`。
 
 ## web の起動
 
