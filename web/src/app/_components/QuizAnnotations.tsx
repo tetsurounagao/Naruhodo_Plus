@@ -13,17 +13,43 @@ export function QuizAnnotations({
   quizId,
   initialNote,
   initialLinks,
+  initialHidden = false,
+  onHiddenChange,
 }: {
   quizId: string;
   initialNote: string | null;
   initialLinks?: QuizLink[];
+  initialHidden?: boolean;
+  onHiddenChange?: (hidden: boolean) => void;
 }) {
   const [note, setNote] = useState(initialNote ?? "");
   const [links, setLinks] = useState<QuizLink[]>(initialLinks ?? []);
   const [url, setUrl] = useState("");
+  const [hidden, setHidden] = useState(initialHidden);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const savedNote = useRef(initialNote ?? "");
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  // 内容に合わせて高さを自動調整（上限あり）
+  useEffect(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 400) + "px";
+  }, [note]);
+
+  async function toggleHidden() {
+    const next = !hidden;
+    setHidden(next);
+    try {
+      await apiPost(`/api/quizzes/${quizId}`, { hidden: next }, "PATCH");
+      onHiddenChange?.(next);
+    } catch (e) {
+      setHidden(!next);
+      setErr((e as Error).message);
+    }
+  }
 
   useEffect(() => {
     if (!initialLinks) {
@@ -83,6 +109,7 @@ export function QuizAnnotations({
     <div className="annot">
       <h4>メモ</h4>
       <textarea
+        ref={noteRef}
         value={note}
         placeholder="調べたことや補足など"
         onChange={(e) => setNote(e.target.value)}
@@ -125,6 +152,21 @@ export function QuizAnnotations({
           ＋
         </button>
       </div>
+
+      <h4 style={{ marginTop: 12 }}>表示</h4>
+      <button
+        type="button"
+        className={hidden ? "unhide-btn" : "hide-btn"}
+        onClick={toggleHidden}
+      >
+        {hidden ? "非表示を解除する" : "この問題を非表示にする"}
+      </button>
+      {hidden && (
+        <p className="hint">
+          非表示の問題は一覧・検索・復習・集計から除外されます。
+        </p>
+      )}
+
       {err && <p className="error">{err}</p>}
     </div>
   );

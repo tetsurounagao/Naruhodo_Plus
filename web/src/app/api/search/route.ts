@@ -1,9 +1,14 @@
 import { requireUser } from "../../../lib/auth";
 import { handle, ok } from "../../../lib/http";
 import { searchQuizzes } from "../../../lib/queries";
-import type { QuizSortKey, QuizStatusFilter } from "../../../lib/types";
+import type {
+  HiddenFilter,
+  QuizSortKey,
+  QuizStatusFilter,
+} from "../../../lib/types";
 
 const STATUSES: QuizStatusFilter[] = ["all", "unanswered", "answered"];
+const HIDDEN: HiddenFilter[] = ["exclude", "only", "all"];
 const SORTS: QuizSortKey[] = [
   "created_desc",
   "created_asc",
@@ -39,12 +44,18 @@ export const GET = handle(async (req) => {
     return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
   };
 
+  const hiddenParam = p.get("hidden");
+  const hidden = HIDDEN.includes(hiddenParam as HiddenFilter)
+    ? (hiddenParam as HiddenFilter)
+    : undefined;
+
   const quizzes = await searchQuizzes({
     q: p.get("q") ?? undefined,
     tags,
     status,
     sort,
     minStar,
+    hidden,
     includeNote: p.get("note") === "1",
     includeLinkTitles: p.get("titles") === "1",
     createdFrom: iso(p.get("from")),

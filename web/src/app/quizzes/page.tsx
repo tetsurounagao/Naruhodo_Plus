@@ -11,6 +11,7 @@ const DEFAULT_FILTERS: FilterState = {
   status: "unanswered",
   sort: "created_desc",
   minStar: 0,
+  hiddenOnly: false,
 };
 
 export default function QuizzesPage() {
@@ -26,6 +27,7 @@ export default function QuizzesPage() {
       status: filters.status,
       sort: filters.sort,
       minStar: String(filters.minStar),
+      hidden: filters.hiddenOnly ? "only" : "exclude",
     });
     apiGet<{ quizzes: QuizPublic[] }>(`/api/quizzes?${p}`)
       .then((r) => setQuizzes(r.quizzes))
@@ -77,7 +79,13 @@ export default function QuizzesPage() {
           {quizzes
             .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
             .map((q) => (
-              <QuizCard key={q.id} quiz={q} onAnswered={onAnswered} />
+              <QuizCard
+                key={q.id}
+                quiz={q}
+                onAnswered={onAnswered}
+                onChanged={load}
+                annotationsToggle
+              />
             ))}
           <Pager page={page} total={quizzes.length} onPage={goPage} />
         </>

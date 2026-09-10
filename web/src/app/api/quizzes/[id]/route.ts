@@ -9,14 +9,19 @@ export const GET = handleParams<{ id: string }>(async (_req, { id }) => {
   return ok({ quiz });
 });
 
-/** star / note の更新。 */
+/** star / note / hidden の更新。 */
 export const PATCH = handleParams<{ id: string }>(async (req, { id }) => {
   await requireUser();
   const body = (await req.json().catch(() => null)) as
-    | { star?: number; note?: string | null }
+    | { star?: number; note?: string | null; hidden?: boolean }
     | null;
-  if (!body || (body.star === undefined && body.note === undefined)) {
-    return fail(400, "star か note を指定してください");
+  if (
+    !body ||
+    (body.star === undefined &&
+      body.note === undefined &&
+      body.hidden === undefined)
+  ) {
+    return fail(400, "star / note / hidden のいずれかを指定してください");
   }
   try {
     const updated = await setQuizAnnotation(id, body);

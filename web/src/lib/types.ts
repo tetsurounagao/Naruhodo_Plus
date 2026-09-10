@@ -29,9 +29,12 @@ export interface QuizPublic {
   last_answered_at: string | null;
   star: number;
   note: string | null;
+  hidden: boolean;
   /** getQuizForAnswering / search の詳細取得時のみ含む */
   links?: QuizLink[];
 }
+
+export type HiddenFilter = "exclude" | "only" | "all";
 
 export interface AttemptResult {
   is_correct: boolean;
