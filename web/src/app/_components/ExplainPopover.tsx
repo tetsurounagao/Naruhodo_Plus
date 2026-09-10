@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { apiGet, apiPost } from "../../lib/client";
+import { Markdown } from "./Markdown";
 
 // 「用語解説が使えるか」はセッション内で 1 回だけ問い合わせる
 let availableCache: boolean | null = null;
@@ -142,7 +143,9 @@ export function ExplainPopover({
           ) : (
             <>
               <p style={{ fontWeight: 600, margin: 0 }}>{result!.term}</p>
-              <p style={{ margin: "6px 0" }}>{result!.text}</p>
+              <div style={{ margin: "6px 0" }}>
+                <Markdown>{result!.text}</Markdown>
+              </div>
               <p className="muted" style={{ fontSize: "0.78rem", margin: "0 0 8px" }}>
                 AI の下書きです。必ず一次情報で確認してください。
                 {result!.cached ? "（キャッシュ）" : ""}

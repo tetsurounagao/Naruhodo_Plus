@@ -14,11 +14,20 @@ import { HttpError } from "./auth";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `あなたは技術用語の意味を日本語で簡潔に説明するアシスタントです。
-- 1〜3文。専門外の人にも分かる平易さで。
-- 確信が持てない部分は「〜と思われる」等と明示する。
-- これは学習の出発点であり、正確さは利用者が一次情報で確認する前提。
-- 前置き・復唱・箇条書きは不要。説明本文のみを返す。`;
+const SYSTEM_PROMPT = `あなたは技術用語を日本語で説明するアシスタントです。
+
+まず説明を 1〜3 文で書く（専門外の人にも分かる平易さ。確信が持てない部分は「〜と思われる」と明示）。
+次に空行をはさんで「**確認の手がかり:**」という見出しを付け、その下に:
+- その語を正しく確認できる信頼できる情報源の「サイト名」を 1〜2 個（例: React → react.dev、
+  JavaScript の言語仕様 → MDN、PostgreSQL → 公式ドキュメント、標準なら RFC 番号）
+- そこで使うとよい検索クエリを 1 つ（バッククォートで囲む）
+
+厳守:
+- 具体的な URL・ページのパス・ディープリンクは書かない（推測になり誤りやすい）。サイト名と検索クエリだけ。
+- 「説明:」「1)」などのラベルや番号、前置き・復唱は書かない。説明文からそのまま始める。`;
+
+// プロンプト仕様の版。変えるとキャッシュの旧エントリを無視する。
+const PROMPT_VERSION = "v2";
 
 export function explainAvailable(): boolean {
   return env.groqApiKey.length > 0;
@@ -26,8 +35,12 @@ export function explainAvailable(): boolean {
 
 function contextKey(context?: string): string {
   const c = (context ?? "").trim();
-  if (!c) return "";
-  return createHash("sha256").update(c).digest("hex").slice(0, 16);
+  if (!c) return PROMPT_VERSION;
+  return (
+    PROMPT_VERSION +
+    ":" +
+    createHash("sha256").update(c).digest("hex").slice(0, 16)
+  );
 }
 
 export async function explainTerm(
@@ -68,7 +81,7 @@ export async function explainTerm(
       body: JSON.stringify({
         model: env.groqModel,
         temperature: 0.3,
-        max_tokens: 320,
+        max_tokens: 500,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
