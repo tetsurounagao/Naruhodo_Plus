@@ -23,9 +23,11 @@ export const env = {
   get groqApiKey() {
     return (process.env.GROQ_API_KEY ?? "").trim();
   },
-  /** Groq のモデル。既定は Llama 3.3 70B。 */
+  /** Groq のモデル。鍵によって使えるモデルが違うので GROQ_MODEL で上書き可。
+   *  例: openai/gpt-oss-120b（既定）, openai/gpt-oss-20b, qwen/qwen3.8-27b,
+   *      llama-3.3-70b-versatile（利用可能なら）。 */
   get groqModel() {
-    return (process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile").trim();
+    return (process.env.GROQ_MODEL ?? "openai/gpt-oss-120b").trim();
   },
 };
 

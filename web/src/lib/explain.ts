@@ -89,7 +89,21 @@ export async function explainTerm(
     throw new HttpError(429, "Groq の無料枠の上限に達しました。少し待って再試行してください。");
   }
   if (!res.ok) {
-    throw new HttpError(502, `Groq でエラーが発生しました（${res.status}）。`);
+    const detail = await res
+      .json()
+      .then((j) => j?.error?.message as string | undefined)
+      .catch(() => undefined);
+    if (res.status === 404) {
+      throw new HttpError(
+        502,
+        `Groq: モデル「${env.groqModel}」が使えません。GROQ_MODEL を変更してください` +
+          (detail ? `（${detail}）` : ""),
+      );
+    }
+    throw new HttpError(
+      502,
+      `Groq エラー（${res.status}）` + (detail ? `: ${detail}` : ""),
+    );
   }
 
   const data = (await res.json().catch(() => null)) as

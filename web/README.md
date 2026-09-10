@@ -78,4 +78,5 @@ npm run build && npm start
   送信前に `src/lib/sensitive.ts` を通し、該当したら送らない
 - 「アプリ内 AI」は**用語辞書に限った限定的な例外**。クイズの生成・保存や学習対話は
   従来どおり外部（Claude / Codex 等）＋ MCP で行う（要件 §2/§3 の「AI 非依存」は維持）
-- 環境変数: `GROQ_API_KEY`（必須ではない）、`GROQ_MODEL`（既定 `llama-3.3-70b-versatile`）
+- 環境変数: `GROQ_API_KEY`（必須ではない）、`GROQ_MODEL`（既定 `openai/gpt-oss-120b`。
+  鍵によって使えるモデルが違うので 404 が出たら変更する。候補は `.env.example` 参照）
