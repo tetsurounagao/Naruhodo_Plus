@@ -24,10 +24,15 @@ function SearchInner() {
   const [results, setResults] = useState<QuizPublic[] | null>(null);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{
+    from: string;
+    to: string;
+    label: string;
+  } | null>(null);
 
   async function run(
     e?: React.FormEvent,
-    override?: { q?: string; tags?: string },
+    override?: { q?: string; tags?: string; from?: string; to?: string },
   ) {
     e?.preventDefault();
     setResults(null);
@@ -39,6 +44,9 @@ function SearchInner() {
       .split(/[,、\s]+/)
       .map((t) => t.trim())
       .filter(Boolean);
+    // override に from キーがあれば（undefined でも）それを使う＝解除も表現できる
+    const fromV = override && "from" in override ? override.from : dateRange?.from;
+    const toV = override && "to" in override ? override.to : dateRange?.to;
 
     const p = new URLSearchParams({
       status: filters.status,
@@ -49,6 +57,8 @@ function SearchInner() {
     if (tagList.length) p.set("tags", tagList.join(","));
     if (includeNote) p.set("note", "1");
     if (includeTitles) p.set("titles", "1");
+    if (fromV) p.set("from", fromV);
+    if (toV) p.set("to", toV);
 
     try {
       const r = await apiGet<{ quizzes: QuizPublic[] }>(`/api/search?${p}`);
@@ -59,11 +69,13 @@ function SearchInner() {
     }
   }
 
-  // URL の ?tags= / ?q= があれば入力欄に反映して自動実行（タグクリックからの遷移）
+  // URL の ?tags= / ?q= / ?from=&to= があれば反映して自動実行
   useEffect(() => {
     const t = params.get("tags") ?? "";
     const query = params.get("q") ?? "";
-    if (!t && !query) return;
+    const from = params.get("from") ?? "";
+    const to = params.get("to") ?? "";
+    if (!t && !query && !from) return;
     setTags(
       t
         .split(",")
@@ -72,7 +84,21 @@ function SearchInner() {
         .join(", "),
     );
     setQ(query);
-    run(undefined, { q: query, tags: t });
+    if (from) {
+      setDateRange({
+        from,
+        to,
+        label: new Date(from).toLocaleDateString("ja-JP"),
+      });
+    } else {
+      setDateRange(null);
+    }
+    run(undefined, {
+      q: query,
+      tags: t,
+      from: from || undefined,
+      to: to || undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
@@ -132,6 +158,21 @@ function SearchInner() {
           </label>
         </div>
         <QuizFilters value={filters} onChange={setFilters} />
+        {dateRange && (
+          <p style={{ marginTop: 8, fontSize: "0.85rem" }}>
+            生成日: <strong>{dateRange.label}</strong>{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setDateRange(null);
+                run(undefined, { from: undefined, to: undefined });
+              }}
+              style={{ padding: "2px 8px", fontSize: "0.8rem" }}
+            >
+              解除
+            </button>
+          </p>
+        )}
         <p style={{ marginTop: 4 }}>
           <button type="submit" className="primary">
             検索

@@ -406,7 +406,23 @@ export interface SearchOpts {
   minStar?: number;
   includeNote?: boolean;
   includeLinkTitles?: boolean;
+  /** 生成日レンジ（ISO）。created_at >= from かつ < to */
+  createdFrom?: string;
+  createdTo?: string;
   limit?: number;
+}
+
+/** 稼働カレンダー用: 直近 days 日のクイズ生成日時（ISO）の配列。 */
+export async function activityTimestamps(days = 190): Promise<string[]> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const rows = must(
+    await getSupabaseAdmin()
+      .from("quizzes")
+      .select("created_at")
+      .gte("created_at", since),
+    "生成日時の取得",
+  ) as { created_at: string }[];
+  return rows.map((r) => r.created_at);
 }
 
 /** キーワード + タグ + フィルタでクイズを検索する。 */
@@ -465,6 +481,8 @@ export async function searchQuizzes(opts: SearchOpts): Promise<QuizPublic[]> {
   }
 
   items = applyStatus(items, status).filter((i) => i.star >= minStar);
+  if (opts.createdFrom) items = items.filter((i) => i.created_at >= opts.createdFrom!);
+  if (opts.createdTo) items = items.filter((i) => i.created_at < opts.createdTo!);
   items = sortQuizzes(items, sort);
   return items.slice(0, limit);
 }

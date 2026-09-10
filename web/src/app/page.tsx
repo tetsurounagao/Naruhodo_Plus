@@ -6,6 +6,7 @@ import { apiGet } from "../lib/client";
 import type { ReviewItem, TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
 import { Tag } from "./_components/Tag";
+import { ActivityCalendar } from "./_components/ActivityCalendar";
 
 interface HomeData {
   stats: TagStat[];
@@ -43,6 +44,14 @@ export default function HomePage() {
           まだクイズ化されていない学び: <strong>{data?.unquizzed ?? "…"}</strong> 件（
           <Link href="/knowledge">一覧</Link>）
         </p>
+      </div>
+
+      <h2>最近の活動</h2>
+      <div className="card">
+        <p className="muted" style={{ margin: "0 0 10px", fontSize: "0.85rem" }}>
+          クイズを生成した日（直近26週）。マスをクリックするとその日の生成分を表示。
+        </p>
+        <ActivityCalendar />
       </div>
 
       {data && data.dueForReview.length > 0 && (
