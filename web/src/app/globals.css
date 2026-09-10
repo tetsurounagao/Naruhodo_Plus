@@ -40,13 +40,32 @@ header.site {
 header.site nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px;
   flex: 1;
 }
 
-header.site a {
+header.site nav a {
   text-decoration: none;
   font-weight: 600;
+  font-size: 0.9rem;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+header.site nav a:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+header.site nav a[aria-current="page"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 main.container {
