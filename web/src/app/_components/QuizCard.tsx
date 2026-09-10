@@ -7,6 +7,7 @@ import { Markdown } from "./Markdown";
 import { Stars } from "./Stars";
 import { QuizRunner } from "./QuizRunner";
 import { QuizAnnotations } from "./QuizAnnotations";
+import { ExplainPopover } from "./ExplainPopover";
 
 function fmtDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -45,7 +46,9 @@ export function QuizCard({
   return (
     <div className="card">
       <div className="md-q">
-        <Markdown>{quiz.question}</Markdown>
+        <ExplainPopover>
+          <Markdown>{quiz.question}</Markdown>
+        </ExplainPopover>
       </div>
       <div>
         {quiz.tags.map((t) => (

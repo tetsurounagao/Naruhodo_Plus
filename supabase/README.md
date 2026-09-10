@@ -49,5 +49,6 @@ supabase db reset  # migrations/ を最初から流し直す
 | `quiz_tags` | table | クイズ × タグ（多対多） |
 | `quiz_attempts` | table | 解答履歴（user_answer, is_correct） |
 | `quiz_links` | table | クイズの参考 URL（title は非同期取得, title_status: pending/ok/failed） |
+| `term_lookups` | table | 用語の即時解説（Groq）のキャッシュ。term + context_key で一意 |
 | `knowledge_items_unquizzed` | view | クイズ未生成の学び一覧 |
 | `tag_stats` | view | タグ別の解答回数・正答数・正答率（閾値適用はアプリ側） |

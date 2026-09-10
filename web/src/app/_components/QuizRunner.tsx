@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
+import { ExplainPopover } from "./ExplainPopover";
 
 /**
  * 1 問を解く UI。設問文は呼び出し側（QuizCard）が表示している前提でここでは繰り返さない。
@@ -48,6 +49,13 @@ export function QuizRunner({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function appendToNote(snippet: string) {
+    const cur = quiz?.note ?? "";
+    const next = (cur ? cur + "\n\n" : "") + "> " + snippet;
+    await apiPost(`/api/quizzes/${quizId}`, { note: next }, "PATCH");
+    setQuiz((q) => (q ? { ...q, note: next } : q));
   }
 
   if (error) return <p className="error">{error}</p>;
@@ -95,12 +103,17 @@ export function QuizRunner({
           <p className={result.is_correct ? "result-ok" : "result-ng"}>
             {result.is_correct ? "正解" : "不正解"}
           </p>
-          {result.explanation && <Markdown>{result.explanation}</Markdown>}
+          {result.explanation && (
+            <ExplainPopover showInput onAddToNote={appendToNote}>
+              <Markdown>{result.explanation}</Markdown>
+            </ExplainPopover>
+          )}
         </>
       )}
 
       {showAnnotations && (
         <QuizAnnotations
+          key={`annot-${quiz.note ?? ""}`}
           quizId={quiz.id}
           initialNote={quiz.note}
           initialLinks={quiz.links}

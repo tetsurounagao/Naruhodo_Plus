@@ -19,6 +19,16 @@ export const env = {
   get supabaseServiceRoleKey() {
     return required("SUPABASE_SERVICE_ROLE_KEY");
   },
+  /** Groq API キー（用語解説・任意）。未設定なら空文字。 */
+  get groqApiKey() {
+    return (process.env.GROQ_API_KEY ?? "").trim();
+  },
+  /** Groq のモデル。鍵によって使えるモデルが違うので GROQ_MODEL で上書き可。
+   *  例: openai/gpt-oss-120b（既定）, openai/gpt-oss-20b, qwen/qwen3.8-27b,
+   *      llama-3.3-70b-versatile（利用可能なら）。 */
+  get groqModel() {
+    return (process.env.GROQ_MODEL ?? "openai/gpt-oss-120b").trim();
+  },
 };
 
 // 苦手タグ判定の閾値（要件 9。暫定値、環境変数で変更可）

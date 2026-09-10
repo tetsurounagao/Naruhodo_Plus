@@ -295,6 +295,45 @@ code.choice-code {
   font-weight: 400;
 }
 
+/* 用語の即時解説 */
+.explainable {
+  position: relative;
+}
+.explain-fab {
+  position: fixed;
+  z-index: 50;
+  transform: translate(-50%, -100%);
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.explain-inputrow {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.explain-inputrow input {
+  flex: 1;
+}
+.explain-inputrow button {
+  flex: none;
+  padding: 6px 12px;
+}
+.explain-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-weak);
+  font-size: 0.92rem;
+}
+
 /* セットアップのチェックリスト */
 .setupchecks {
   list-style: none;
