@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
 import type { QuizLink } from "../../lib/types";
+import { TagEditor } from "./TagEditor";
 
 /**
- * クイズの自由記入メモ / 参考リンクの編集。
+ * クイズの自由記入メモ / タグ / 参考リンクの編集。
  * star は QuizCard 側で常時編集できるのでここには置かない。
  * 回答結果ビューと /search 結果の展開部で共用する。
  */
@@ -13,12 +14,16 @@ export function QuizAnnotations({
   quizId,
   initialNote,
   initialLinks,
+  initialTags,
+  onTagsChange,
   initialHidden = false,
   onHiddenChange,
 }: {
   quizId: string;
   initialNote: string | null;
   initialLinks?: QuizLink[];
+  initialTags?: string[];
+  onTagsChange?: (tags: string[]) => void;
   initialHidden?: boolean;
   onHiddenChange?: (hidden: boolean) => void;
 }) {
@@ -114,6 +119,13 @@ export function QuizAnnotations({
         placeholder="調べたことや補足など"
         onChange={(e) => setNote(e.target.value)}
         onBlur={saveNoteIfChanged}
+      />
+
+      <h4 style={{ marginTop: 12 }}>タグ</h4>
+      <TagEditor
+        quizId={quizId}
+        initialTags={initialTags ?? []}
+        onChange={onTagsChange}
       />
 
       <h4 style={{ marginTop: 12 }}>参考リンク</h4>

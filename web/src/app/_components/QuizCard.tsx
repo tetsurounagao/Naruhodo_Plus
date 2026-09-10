@@ -35,6 +35,7 @@ export function QuizCard({
 }) {
   const [open, setOpen] = useState(false);
   const [star, setStar] = useState(quiz.star);
+  const [tags, setTags] = useState<string[]>(quiz.tags);
 
   async function saveStar(v: number) {
     const prev = star;
@@ -54,7 +55,7 @@ export function QuizCard({
         </ExplainPopover>
       </div>
       <div>
-        {quiz.tags.map((t) => (
+        {tags.map((t) => (
           <Tag name={t} key={t} />
         ))}
       </div>
@@ -87,12 +88,14 @@ export function QuizCard({
       {annotationsToggle && !open && (
         <details style={{ marginTop: 10 }}>
           <summary className="muted" style={{ cursor: "pointer" }}>
-            メモ・参考リンク
+            メモ・タグ・参考リンク
           </summary>
           <QuizAnnotations
             quizId={quiz.id}
             initialNote={quiz.note}
             initialLinks={quiz.links}
+            initialTags={tags}
+            onTagsChange={setTags}
             initialHidden={quiz.hidden}
             onHiddenChange={() => onChanged?.(quiz.id)}
           />
