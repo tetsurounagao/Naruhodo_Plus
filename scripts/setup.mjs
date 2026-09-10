@@ -26,7 +26,7 @@ function readExisting(relPath) {
   if (!existsSync(abs)) return {};
   const out = {};
   for (const line of readFileSync(abs, "utf8").split("\n")) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
     if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
   }
   return out;
