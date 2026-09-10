@@ -5,6 +5,7 @@ import { apiGet } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
 import { QuizFilters, type FilterState } from "../_components/QuizFilters";
+import { Pager, PAGE_SIZE } from "../_components/Pager";
 
 const DEFAULT_FILTERS: FilterState = {
   status: "unanswered",
@@ -16,9 +17,11 @@ export default function QuizzesPage() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [quizzes, setQuizzes] = useState<QuizPublic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const load = useCallback(() => {
     setQuizzes(null);
+    setPage(1);
     const p = new URLSearchParams({
       status: filters.status,
       sort: filters.sort,
@@ -30,6 +33,11 @@ export default function QuizzesPage() {
   }, [filters]);
 
   useEffect(load, [load]);
+
+  function goPage(n: number) {
+    setPage(n);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }
 
   function onAnswered(quizId: string, result: AttemptResult) {
     setQuizzes((prev) =>
@@ -66,9 +74,12 @@ export default function QuizzesPage() {
           <p className="muted" style={{ fontSize: "0.85rem" }}>
             {quizzes.length} 件
           </p>
-          {quizzes.map((q) => (
-            <QuizCard key={q.id} quiz={q} onAnswered={onAnswered} />
-          ))}
+          {quizzes
+            .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+            .map((q) => (
+              <QuizCard key={q.id} quiz={q} onAnswered={onAnswered} />
+            ))}
+          <Pager page={page} total={quizzes.length} onPage={goPage} />
         </>
       )}
     </>

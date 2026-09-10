@@ -6,6 +6,7 @@ import { apiGet } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
 import { QuizFilters, type FilterState } from "../_components/QuizFilters";
+import { Pager, PAGE_SIZE } from "../_components/Pager";
 
 const DEFAULT_FILTERS: FilterState = {
   status: "all",
@@ -24,6 +25,7 @@ function SearchInner() {
   const [results, setResults] = useState<QuizPublic[] | null>(null);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [dateRange, setDateRange] = useState<{
     from: string;
     to: string;
@@ -37,6 +39,7 @@ function SearchInner() {
     e?.preventDefault();
     setResults(null);
     setError(null);
+    setPage(1);
 
     const qv = (override?.q ?? q).trim();
     const tagsRaw = override?.tags ?? tags;
@@ -191,14 +194,26 @@ function SearchInner() {
           {results.length === 0 ? (
             <p className="muted">該当するクイズはありません。</p>
           ) : (
-            results.map((quiz) => (
-              <QuizCard
-                key={quiz.id}
-                quiz={quiz}
-                onAnswered={onAnswered}
-                annotationsToggle
+            <>
+              {results
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((quiz) => (
+                  <QuizCard
+                    key={quiz.id}
+                    quiz={quiz}
+                    onAnswered={onAnswered}
+                    annotationsToggle
+                  />
+                ))}
+              <Pager
+                page={page}
+                total={results.length}
+                onPage={(n) => {
+                  setPage(n);
+                  window.scrollTo({ top: 0 });
+                }}
               />
-            ))
+            </>
           )}
         </>
       )}
