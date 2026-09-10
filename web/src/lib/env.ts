@@ -19,6 +19,14 @@ export const env = {
   get supabaseServiceRoleKey() {
     return required("SUPABASE_SERVICE_ROLE_KEY");
   },
+  /** Groq API キー（用語解説・任意）。未設定なら空文字。 */
+  get groqApiKey() {
+    return (process.env.GROQ_API_KEY ?? "").trim();
+  },
+  /** Groq のモデル。既定は Llama 3.3 70B。 */
+  get groqModel() {
+    return (process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile").trim();
+  },
 };
 
 // 苦手タグ判定の閾値（要件 9。暫定値、環境変数で変更可）

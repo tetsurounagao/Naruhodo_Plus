@@ -64,5 +64,18 @@ npm run build && npm start
 | `POST /api/attempts` | `{quiz_id, user_answer}` を採点し履歴に記録。結果と正解・解説を返す |
 | `GET /api/knowledge?unquizzed=1` | 未クイズ化の学び一覧 |
 | `GET /api/tag-stats` | タグ別の正答率と要復習フラグ |
+| `GET\|POST /api/explain` | 用語の即時解説（Groq）。GET は利用可否、POST は `{term, context?}` を解説 |
 
 `/api/auth/*` 以外の API ルートは未ログインだと 401。保護ページは `/login` にリダイレクト（`src/middleware.ts`）。
+
+## 用語の即時解説（Groq・任意）
+
+解説文や設問のテキストを選択すると「調べる」ボタンが出て、その語を Groq（無料枠）で
+1〜3 文に要約する（`POST /api/explain`）。結果はキャッシュ（`term_lookups`）。
+
+- **コア機能には一切依存しない。** `GROQ_API_KEY` 未設定ならこの機能は表示されない
+- 送るのは選択した語＋出てきた 1 文まで。knowledge 本体や解説全文は送らない。
+  送信前に `src/lib/sensitive.ts` を通し、該当したら送らない
+- 「アプリ内 AI」は**用語辞書に限った限定的な例外**。クイズの生成・保存や学習対話は
+  従来どおり外部（Claude / Codex 等）＋ MCP で行う（要件 §2/§3 の「AI 非依存」は維持）
+- 環境変数: `GROQ_API_KEY`（必須ではない）、`GROQ_MODEL`（既定 `llama-3.3-70b-versatile`）
