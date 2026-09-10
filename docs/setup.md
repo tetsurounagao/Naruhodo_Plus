@@ -77,7 +77,7 @@ npm run db:migrate
 
 README の «Deploy with Vercel» ボタンから:
 
-1. GitHub にフォース → Vercel プロジェクト作成
+1. GitHub にフォーク → Vercel プロジェクト作成
 2. **Root Directory** が `web` になっていることを確認
 3. 環境変数に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` /
    `SUPABASE_SERVICE_ROLE_KEY`（＋任意で `GROQ_API_KEY`）を `web/.env.local` と同じ値で登録
@@ -130,7 +130,7 @@ npm run build            # mcp-server と web をビルド
 
 ---
 
-## 8.5. バックアップ（無料枠を使う場合は必須級）
+## 9. バックアップ（無料枠を使う場合は必須級）
 
 Supabase の無料枠は自動バックアップがありません。手元でデータを退避しておきます。
 
@@ -155,7 +155,7 @@ npm run db:restore -- backups/naruhodo-20260101-120000.json --yes  # 実行
 
 ---
 
-## 9. 確認
+## 10. 確認
 
 Web の `/setup` ページを開き、チェックがすべて ✓ になっていれば完了です
 （Groq は任意なので設定しなければ `–` のままで問題ありません）。
@@ -167,6 +167,7 @@ Web の `/setup` ページを開き、チェックがすべて ✓ になって�
 | 症状 | 対処 |
 | --- | --- |
 | `db:migrate` が `ENOTFOUND` / `ETIMEDOUT` | 接続文字列を **Session pooler**（`pooler.supabase.com:5432`）に。Direct は IPv6 専用のことがある |
+| `db:migrate` が `tenant or user not found` | project-ref かユーザー名の誤り。**Connect → Session pooler** の URI をコピーし直す（ユーザー名は `postgres.<project-ref>`、`<project-ref>` は API URL のサブドメイン） |
 | `db:migrate` が「既存スキーマを検出…baseline」 | 正常。既に適用済みの DB を認識しただけ |
 | `db:restore` が FK エラー | バックアップとスキーマの世代がズレている可能性。`npm run db:migrate` 後に再実行 |
 | Web が `Cannot find module './vendor-chunks/...'` | 依存追加後のキャッシュ。`rm -rf web/.next && npm run dev:web` |

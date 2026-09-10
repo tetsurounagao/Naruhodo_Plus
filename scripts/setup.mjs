@@ -8,8 +8,8 @@
  * 既存ファイルは上書きしない（--force で上書き）。値はどこにも送信しない。
  *
  * 非対話（TTY でない / CI）では環境変数から読む:
- *   SETUP_SUPABASE_URL, SETUP_ANON_KEY, SETUP_SERVICE_KEY,
- *   SETUP_DATABASE_URL, SETUP_GROQ_KEY(任意), SETUP_CLIENT_NAME(既定 claude)
+ *   SETUP_SUPABASE_URL, SETUP_ANON_KEY, SETUP_SERVICE_KEY, SETUP_DATABASE_URL,
+ *   SETUP_DATABASE_PASSWORD(任意), SETUP_GROQ_KEY(任意), SETUP_CLIENT_NAME(既定 claude)
  */
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout, argv, env, exit } from "node:process";
@@ -130,8 +130,10 @@ async function main() {
 
   console.log("\n次のステップ:");
   console.log("  1) npm run db:migrate   # スキーマを適用");
-  console.log("  2) npm run build");
-  console.log("  3) MCP 登録は /setup ページか docs/setup.md を参照\n");
+  console.log("  2) npm run dev:web      # http://localhost:3000（または Vercel にデプロイ）");
+  console.log("  3) /login でアカウント作成（ユーザーが 0 人のときだけ表示）");
+  console.log("  4) npm run build → /setup ページで MCP 登録コマンドを取得");
+  console.log("  詳細は docs/setup.md\n");
 }
 
 main().catch((e) => {

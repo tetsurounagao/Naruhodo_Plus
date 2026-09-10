@@ -67,8 +67,19 @@ export function resolveDbConfig({ root = repoRoot } = {}) {
   return { config, usedPasswordOverride: Boolean(passwordOverride) };
 }
 
-/** 認証エラー時の共通ヒント文（各スクリプトの catch で使う）。 */
+/** 接続エラー時の共通ヒント文（各スクリプトの catch で使う）。 */
 export function authHint(message) {
+  // pooler が「プロジェクト参照 / ユーザー名が違う」と言うケース
+  // 例: "Tenant or user not found" / "tenant/user postgres.xxx not found"
+  if (/tenant\s*(?:or|\/)\s*user\b.*not found/i.test(message)) {
+    return [
+      "",
+      "ヒント: 接続先のユーザー名 / プロジェクト参照が違う可能性があります。",
+      "  - Session pooler の URI をそのまま使う（ユーザー名は postgres.<project-ref>）",
+      "  - <project-ref> は Supabase API URL のサブドメイン（https://<project-ref>.supabase.co）",
+      "  - Supabase → Connect → Session pooler の文字列をコピーし直すのが確実",
+    ].join("\n");
+  }
   if (!/password authentication failed/i.test(message)) return "";
   return [
     "",
