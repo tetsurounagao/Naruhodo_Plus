@@ -19,20 +19,24 @@ import pg from "pg";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = resolve(root, "supabase/migrations");
 
-function loadDatabaseUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+function readEnvFile() {
+  const out = {};
   const envPath = resolve(root, ".env");
   if (existsSync(envPath)) {
     for (const line of readFileSync(envPath, "utf8").split("\n")) {
-      const m = line.match(/^\s*(?:export\s+)?DATABASE_URL\s*=\s*(.+?)\s*$/);
-      if (m) return m[1].replace(/^["']|["']$/g, "");
+      const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
     }
   }
-  return null;
+  return out;
 }
 
 async function main() {
-  const url = loadDatabaseUrl();
+  const fileEnv = readEnvFile();
+  const url = process.env.DATABASE_URL || fileEnv.DATABASE_URL || null;
+  // パスワードを URI に埋めずに別行で渡せる（記号のエスケープ不要）。
+  const passwordOverride =
+    process.env.DATABASE_PASSWORD || fileEnv.DATABASE_PASSWORD || undefined;
   if (!url) {
     console.error(
       "DATABASE_URL が見つかりません。npm run setup を実行するか .env に設定してください。",
@@ -50,6 +54,7 @@ async function main() {
 
   const client = new pg.Client({
     connectionString: url,
+    ...(passwordOverride ? { password: passwordOverride } : {}),
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
