@@ -12,6 +12,9 @@ web/out/
 .env.local
 .env.*.local
 
+# DB バックアップ（実データ・メモが含まれる）
+backups/
+
 # logs
 *.log
 npm-debug.log*
