@@ -52,11 +52,40 @@ async function main() {
     return;
   }
 
-  const client = new pg.Client({
-    connectionString: url,
-    ...(passwordOverride ? { password: passwordOverride } : {}),
+  // connectionString 任せにせず自分で分解する。URL に記号入りパスワードが
+  // そのまま入っていると new URL() が壊れるので、その場合は
+  // password 部分を [YOUR-PASSWORD] 等のプレースホルダにし DATABASE_PASSWORD を使う。
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    console.error(
+      "DATABASE_URL を解析できませんでした。パスワードに記号が含まれる場合は、\n" +
+        "URL のパスワード部分を x などに置き換え、生パスワードを DATABASE_PASSWORD に書いてください。",
+    );
+    exit(1);
+  }
+
+  const config = {
+    host: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : 5432,
+    user: decodeURIComponent(parsed.username),
+    password: passwordOverride ?? decodeURIComponent(parsed.password),
+    database: parsed.pathname.replace(/^\//, "") || "postgres",
     ssl: { rejectUnauthorized: false },
-  });
+  };
+  if (!config.password) {
+    console.error(
+      "パスワードが空です。DATABASE_PASSWORD に実際の DB パスワードを設定してください。",
+    );
+    exit(1);
+  }
+  console.log(
+    `接続先: ${config.user}@${config.host}:${config.port}/${config.database}` +
+      (passwordOverride ? "  (パスワードは DATABASE_PASSWORD を使用)" : ""),
+  );
+
+  const client = new pg.Client(config);
   await client.connect();
 
   try {
