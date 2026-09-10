@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/client";
 import type { KnowledgeItem } from "../../lib/types";
 import { Markdown } from "../_components/Markdown";
+import { Tag } from "../_components/Tag";
 
 function buildPrompt(k: KnowledgeItem): string {
   return [
@@ -66,9 +67,7 @@ export default function KnowledgePage() {
             )}
             <div>
               {k.tags.map((t) => (
-                <span className="tag" key={t}>
-                  {t}
-                </span>
+                <Tag name={t} key={t} />
               ))}
             </div>
             <button onClick={() => copy(k)}>

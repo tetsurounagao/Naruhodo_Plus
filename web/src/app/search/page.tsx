@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiGet } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
@@ -12,7 +13,8 @@ const DEFAULT_FILTERS: FilterState = {
   minStar: 0,
 };
 
-export default function SearchPage() {
+function SearchInner() {
+  const params = useSearchParams();
   const [q, setQ] = useState("");
   const [tags, setTags] = useState("");
   const [includeNote, setIncludeNote] = useState(false);
@@ -23,20 +25,27 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(e?: React.FormEvent) {
+  async function run(
+    e?: React.FormEvent,
+    override?: { q?: string; tags?: string },
+  ) {
     e?.preventDefault();
     setResults(null);
     setError(null);
+
+    const qv = (override?.q ?? q).trim();
+    const tagsRaw = override?.tags ?? tags;
+    const tagList = tagsRaw
+      .split(/[,、\s]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
     const p = new URLSearchParams({
       status: filters.status,
       sort: filters.sort,
       minStar: String(filters.minStar),
     });
-    if (q.trim()) p.set("q", q.trim());
-    const tagList = tags
-      .split(/[,、\s]+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    if (qv) p.set("q", qv);
     if (tagList.length) p.set("tags", tagList.join(","));
     if (includeNote) p.set("note", "1");
     if (includeTitles) p.set("titles", "1");
@@ -49,6 +58,23 @@ export default function SearchPage() {
       setError((err as Error).message);
     }
   }
+
+  // URL の ?tags= / ?q= があれば入力欄に反映して自動実行（タグクリックからの遷移）
+  useEffect(() => {
+    const t = params.get("tags") ?? "";
+    const query = params.get("q") ?? "";
+    if (!t && !query) return;
+    setTags(
+      t
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(", "),
+    );
+    setQ(query);
+    run(undefined, { q: query, tags: t });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   function onAnswered(quizId: string, result: AttemptResult) {
     setResults((prev) =>
@@ -136,5 +162,13 @@ export default function SearchPage() {
         </>
       )}
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={null}>
+      <SearchInner />
+    </Suspense>
   );
 }

@@ -5,6 +5,7 @@ import { apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { Stars } from "./Stars";
+import { Tag } from "./Tag";
 import { QuizRunner } from "./QuizRunner";
 import { QuizAnnotations } from "./QuizAnnotations";
 
@@ -49,9 +50,7 @@ export function QuizCard({
       </div>
       <div>
         {quiz.tags.map((t) => (
-          <span className="tag" key={t}>
-            {t}
-          </span>
+          <Tag name={t} key={t} />
         ))}
       </div>
 

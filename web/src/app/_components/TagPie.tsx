@@ -1,6 +1,7 @@
 "use client";
 
 import type { TagStat } from "../../lib/types";
+import { useTagColors } from "../../lib/tag-colors";
 
 /**
  * タグ別の出題比率（要件 §9 の円グラフ）。
@@ -8,7 +9,7 @@ import type { TagStat } from "../../lib/types";
  * データビズ方針: 全ペア隣接となる円グラフで色だけに識別を負わせられるのは 3 色まで。
  * そのため色スライスは上位 3 タグ + 「その他」に畳み、残りは下の内訳リスト（表の代わり）に
  * 全タグ分を出す。凡例と内訳は必ず出す（色のみに依存しない）。
- * パレットは dataviz スキルの検証済みカテゴリ配色 slot 1-3（light）。
+ * タグに色が設定されていればそれを使い、未設定はこの検証済みパレット（slot 1-3）にフォールバック。
  */
 const SLICE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"];
 const OTHER_COLOR = "#8a8a84";
@@ -28,6 +29,7 @@ export function TagPie({
   /** 実際のクイズ数（中央に表示）。スライスは 1 問が複数タグに属するため合計は超えうる */
   quizTotal: number;
 }) {
+  const { colorOf } = useTagColors();
   const withQuizzes = stats
     .filter((s) => s.quiz_count > 0)
     .sort((a, b) => b.quiz_count - a.quiz_count);
@@ -44,7 +46,7 @@ export function TagPie({
   const slices: Slice[] = top.map((s, i) => ({
     label: s.tag_name,
     count: s.quiz_count,
-    color: SLICE_COLORS[i],
+    color: colorOf(s.tag_name) ?? SLICE_COLORS[i],
   }));
   if (rest.length > 0) {
     slices.push({
