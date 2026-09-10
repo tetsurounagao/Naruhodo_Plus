@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { Stars } from "./Stars";
@@ -29,6 +30,17 @@ export function QuizCard({
   annotationsToggle?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [star, setStar] = useState(quiz.star);
+
+  async function saveStar(v: number) {
+    const prev = star;
+    setStar(v);
+    try {
+      await apiPost(`/api/quizzes/${quiz.id}`, { star: v }, "PATCH");
+    } catch {
+      setStar(prev);
+    }
+  }
 
   return (
     <div className="card">
@@ -44,7 +56,7 @@ export function QuizCard({
       </div>
 
       <div className="quizmeta">
-        <Stars value={quiz.star} size={14} />
+        <Stars value={star} onChange={saveStar} size={16} />
         <span>解答 {quiz.attempt_count} 回</span>
         {quiz.last_correct !== null && (
           <span>前回 {quiz.last_correct ? "正解" : "不正解"}</span>
@@ -75,7 +87,6 @@ export function QuizCard({
           </summary>
           <QuizAnnotations
             quizId={quiz.id}
-            initialStar={quiz.star}
             initialNote={quiz.note}
             initialLinks={quiz.links}
           />

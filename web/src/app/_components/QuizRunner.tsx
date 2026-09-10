@@ -102,7 +102,6 @@ export function QuizRunner({
       {showAnnotations && (
         <QuizAnnotations
           quizId={quiz.id}
-          initialStar={quiz.star}
           initialNote={quiz.note}
           initialLinks={quiz.links}
         />

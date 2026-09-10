@@ -3,24 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
 import type { QuizLink } from "../../lib/types";
-import { Stars } from "./Stars";
 
 /**
- * クイズの star / 自由記入メモ / 参考リンクの編集。
+ * クイズの自由記入メモ / 参考リンクの編集。
+ * star は QuizCard 側で常時編集できるのでここには置かない。
  * 回答結果ビューと /search 結果の展開部で共用する。
  */
 export function QuizAnnotations({
   quizId,
-  initialStar,
   initialNote,
   initialLinks,
 }: {
   quizId: string;
-  initialStar: number;
   initialNote: string | null;
   initialLinks?: QuizLink[];
 }) {
-  const [star, setStar] = useState(initialStar);
   const [note, setNote] = useState(initialNote ?? "");
   const [links, setLinks] = useState<QuizLink[]>(initialLinks ?? []);
   const [url, setUrl] = useState("");
@@ -35,15 +32,6 @@ export function QuizAnnotations({
         .catch(() => {});
     }
   }, [quizId, initialLinks]);
-
-  async function saveStar(v: number) {
-    setStar(v);
-    try {
-      await apiPost(`/api/quizzes/${quizId}`, { star: v }, "PATCH");
-    } catch (e) {
-      setErr((e as Error).message);
-    }
-  }
 
   async function saveNoteIfChanged() {
     if (note === savedNote.current) return;
@@ -93,10 +81,7 @@ export function QuizAnnotations({
 
   return (
     <div className="annot">
-      <h4>重要度</h4>
-      <Stars value={star} onChange={saveStar} />
-
-      <h4 style={{ marginTop: 12 }}>メモ</h4>
+      <h4>メモ</h4>
       <textarea
         value={note}
         placeholder="調べたことや補足など"
