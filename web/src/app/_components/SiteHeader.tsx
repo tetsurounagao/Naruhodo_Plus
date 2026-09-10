@@ -22,6 +22,7 @@ export function SiteHeader() {
         <Link href="/quizzes">クイズ</Link>
         <Link href="/search">検索</Link>
         <Link href="/review">復習</Link>
+        <Link href="/tags">タグ</Link>
         <Link href="/knowledge">未出題の学び</Link>
         <Link href="/setup">セットアップ</Link>
       </nav>

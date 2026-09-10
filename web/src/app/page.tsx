@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiGet } from "../lib/client";
 import type { ReviewItem, TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
+import { Tag } from "./_components/Tag";
 
 interface HomeData {
   stats: TagStat[];
@@ -85,7 +86,7 @@ export default function HomePage() {
         <div className="card">
           {weak.map((s) => (
             <div key={s.tag_id}>
-              <span className="tag weak">{s.tag_name}</span>{" "}
+              <Tag name={s.tag_name} weak />{" "}
               {Math.round((s.accuracy ?? 0) * 100)}%（{s.correct_attempts}/
               {s.total_attempts}）
             </div>
@@ -102,7 +103,7 @@ export default function HomePage() {
         <div className="card">
           {stats.map((s) => (
             <div key={s.tag_id}>
-              <span className={s.weak ? "tag weak" : "tag"}>{s.tag_name}</span>{" "}
+              <Tag name={s.tag_name} weak={s.weak} />{" "}
               {s.accuracy === null
                 ? "未解答"
                 : `${Math.round(s.accuracy * 100)}%（${s.correct_attempts}/${s.total_attempts}）`}

@@ -65,6 +65,14 @@ export interface KnowledgeItem {
   created_at: string;
 }
 
+export interface TagInfo {
+  id: string;
+  name: string;
+  /** #RRGGBB。未設定は null */
+  color: string | null;
+  quiz_count: number;
+}
+
 export interface TagStat {
   tag_id: string;
   tag_name: string;

@@ -39,7 +39,8 @@ header.site {
 
 header.site nav {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   flex: 1;
 }
 
@@ -78,11 +79,64 @@ h1 {
   border-radius: 999px;
   padding: 1px 10px;
   margin: 0 4px 4px 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+a.tag:hover {
+  filter: brightness(0.95);
+  text-decoration: underline;
 }
 
 .tag.weak {
   background: #f6e4e4;
   color: var(--danger);
+}
+
+/* /tags ページ */
+.taglist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.taglist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.taglist li:last-child {
+  border-bottom: none;
+}
+.taglist .count {
+  font-size: 0.8rem;
+  min-width: 3.5em;
+}
+.taglist .swatches {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+.taglist .sw-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.taglist input[type="color"] {
+  width: 36px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+}
+.taglist .clear {
+  padding: 4px 8px;
+  font-size: 0.8rem;
 }
 
 button {

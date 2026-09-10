@@ -11,6 +11,7 @@ import type {
   QuizSortKey,
   QuizStatusFilter,
   ReviewItem,
+  TagInfo,
   TagStat,
 } from "./types";
 
@@ -353,6 +354,48 @@ export async function listTagStats(): Promise<TagStat[]> {
       r.accuracy !== null &&
       r.accuracy < maxAccuracy,
   }));
+}
+
+/** 全タグ（色・クイズ数つき）。/tags ページと色マップに使う。 */
+export async function listTags(): Promise<TagInfo[]> {
+  const supabase = getSupabaseAdmin();
+  const [tagsRes, qtRes] = await Promise.all([
+    supabase.from("tags").select("id, name, color"),
+    supabase.from("quiz_tags").select("tag_id"),
+  ]);
+  const tags = must(tagsRes, "tags 取得") as {
+    id: string;
+    name: string;
+    color: string | null;
+  }[];
+  const qtRows = must(qtRes, "quiz_tags 取得") as { tag_id: string }[];
+  const count = new Map<string, number>();
+  for (const r of qtRows) count.set(r.tag_id, (count.get(r.tag_id) ?? 0) + 1);
+
+  return tags
+    .map((t) => ({ ...t, quiz_count: count.get(t.id) ?? 0 }))
+    .sort((a, b) => b.quiz_count - a.quiz_count || a.name.localeCompare(b.name));
+}
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+export async function setTagColor(
+  id: string,
+  color: string | null,
+): Promise<{ id: string; color: string | null }> {
+  if (color !== null && !HEX.test(color)) throw new Error("color は #RRGGBB 形式");
+  const supabase = getSupabaseAdmin();
+  const row = must(
+    await supabase
+      .from("tags")
+      .update({ color: color ? color.toLowerCase() : null })
+      .eq("id", id)
+      .select("id, color")
+      .maybeSingle(),
+    "タグ色の更新",
+  ) as { id: string; color: string | null } | null;
+  if (!row) throw new Error("tag not found");
+  return row;
 }
 
 export interface SearchOpts {
