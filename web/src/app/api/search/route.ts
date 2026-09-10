@@ -33,6 +33,12 @@ export const GET = handle(async (req) => {
   const minStarRaw = Number(p.get("minStar"));
   const minStar = Number.isFinite(minStarRaw) ? minStarRaw : undefined;
 
+  const iso = (v: string | null) => {
+    if (!v) return undefined;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  };
+
   const quizzes = await searchQuizzes({
     q: p.get("q") ?? undefined,
     tags,
@@ -41,6 +47,8 @@ export const GET = handle(async (req) => {
     minStar,
     includeNote: p.get("note") === "1",
     includeLinkTitles: p.get("titles") === "1",
+    createdFrom: iso(p.get("from")),
+    createdTo: iso(p.get("to")),
   });
   return ok({ quizzes });
 });
