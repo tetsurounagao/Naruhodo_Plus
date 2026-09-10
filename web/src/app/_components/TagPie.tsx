@@ -19,6 +19,8 @@ interface Slice {
   label: string;
   count: number;
   color: string;
+  /** その他スライスは「N問」ではなく「Nタグ」と出す */
+  isOther?: boolean;
 }
 
 export function TagPie({
@@ -50,11 +52,13 @@ export function TagPie({
   }));
   if (rest.length > 0) {
     slices.push({
-      label: `その他（${rest.length}タグ）`,
+      label: "その他",
       count: rest.reduce((sum, s) => sum + s.quiz_count, 0),
       color: OTHER_COLOR,
+      isOther: true,
     });
   }
+  const otherTagCount = rest.length;
 
   // C = 100 になる半径。dashoffset 25 で真上スタート。
   const R = 100 / (2 * Math.PI);
@@ -84,7 +88,11 @@ export function TagPie({
               strokeDasharray={`${dash} ${100 - dash}`}
               strokeDashoffset={offset}
             >
-              <title>{`${s.label}: ${s.count}問 (${pct(s.count)}%)`}</title>
+              <title>
+                {s.isOther
+                  ? `その他 ${otherTagCount}タグ・全体の${pct(s.count)}%`
+                  : `${s.label}: ${s.count}問・全体の${pct(s.count)}%`}
+              </title>
             </circle>
           );
         })}
@@ -104,13 +112,15 @@ export function TagPie({
               {s.label}
               <span className="muted">
                 {" "}
-                {s.count}問 / {pct(s.count)}%
+                {s.isOther ? `${otherTagCount}タグ` : `${s.count}問`} ・ 全体の
+                {pct(s.count)}%
               </span>
             </li>
           ))}
         </ul>
         <p className="muted" style={{ fontSize: "0.78rem", margin: "6px 0 0" }}>
-          % はタグ付けのべ {total} 件に対する割合
+          円の比率 = そのタグが付いたクイズ数の割合。1問に複数タグが付くので合計はクイズ数（
+          {quizTotal}）を超えます。
         </p>
       </div>
 
@@ -123,7 +133,7 @@ export function TagPie({
                 {s.tag_name}
                 <span className="muted">
                   {" "}
-                  {s.quiz_count}問 / {pct(s.quiz_count)}%
+                  {s.quiz_count}/{quizTotal}問
                 </span>
               </li>
             ))}
