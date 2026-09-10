@@ -37,7 +37,7 @@ Web は Vercel にデプロイ（下のボタン）するか、`npm run dev:web`
 
 ### Vercel デプロイ
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftetsurounagao%2FNaruhodo_Plus&root-directory=web&project-name=naruhodo-plus&repository-name=naruhodo-plus&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY&envDescription=Supabase%20%E3%81%AE%E5%80%A4%EF%BC%88web%2F.env.local%20%E3%81%A8%E5%90%8C%E3%81%98%EF%BC%89)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftetsurounagao%2FNaruhodo_Plus&root-directory=web&project-name=naruhodo-plus&repository-name=naruhodo-plus&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY&envDescription=Supabase%20%E3%81%AE%E5%80%A4%EF%BC%88web%2F.env.local%20%E3%81%A8%E5%90%8C%E3%81%98%EF%BC%89%E3%80%82GROQ_API_KEY%20%E3%81%AF%E4%BB%BB%E6%84%8F%E3%81%A7%E5%BE%8C%E3%81%8B%E3%82%89%20Project%20Settings%20%E3%81%AB%E8%BF%BD%E5%8A%A0%E5%8F%AF)
 
 Root Directory は `web`。デプロイ後、Supabase の Authentication → URL Configuration → Site URL に発行された URL を設定する。
 
@@ -63,7 +63,7 @@ npm run dev:web
 
 ログインは Supabase Auth（メール＋パスワード）。最初のユーザーは `/login` のアカウント作成フォーム、2 人目以降は Supabase ダッシュボードの Authentication → Add user。画面・API ルート一覧・アーキテクチャは [web/README.md](web/README.md) を参照。
 
-実装済み画面: `/login` / `/`（ホーム）/ `/quizzes` / `/search` / `/review` / `/knowledge` / `/setup`。
+実装済み画面: `/login` / `/`（ホーム）/ `/quizzes` / `/search` / `/review` / `/tags` / `/knowledge` / `/setup`。
 
 ## 環境変数
 
