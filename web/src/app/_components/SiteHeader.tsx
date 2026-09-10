@@ -17,7 +17,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/connect") return null;
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
