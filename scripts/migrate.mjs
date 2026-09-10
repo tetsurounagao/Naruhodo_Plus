@@ -117,5 +117,17 @@ async function main() {
 
 main().catch((e) => {
   console.error("\nマイグレーション失敗:", e.message);
+  if (/password authentication failed/i.test(e.message)) {
+    console.error(
+      [
+        "",
+        "ヒント:",
+        "  - DATABASE_URL の [YOUR-PASSWORD] を実際の DB パスワードに置き換えたか確認",
+        "  - パスワードに記号(+ / @ ? # 等)が含まれると URI が壊れます。",
+        "    Supabase → Settings → Database → Reset database password で記号なしに再設定するのが確実",
+        "  - Session pooler の URI（ユーザー名は postgres.<project-ref>、ホストは *.pooler.supabase.com:5432）を使う",
+      ].join("\n"),
+    );
+  }
   exit(1);
 });
