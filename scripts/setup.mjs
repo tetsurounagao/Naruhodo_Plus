@@ -52,6 +52,7 @@ async function collect() {
     anonKey: web.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     serviceKey: web.SUPABASE_SERVICE_ROLE_KEY || mcp.SUPABASE_SERVICE_ROLE_KEY || "",
     dbUrl: rootEnv.DATABASE_URL || "",
+    dbPassword: rootEnv.DATABASE_PASSWORD || "",
     groqKey: web.GROQ_API_KEY || "",
     clientName: mcp.MCP_CLIENT_NAME || "claude",
   };
@@ -62,6 +63,7 @@ async function collect() {
       anonKey: env.SETUP_ANON_KEY || defaults.anonKey,
       serviceKey: env.SETUP_SERVICE_KEY || defaults.serviceKey,
       dbUrl: env.SETUP_DATABASE_URL || defaults.dbUrl,
+      dbPassword: env.SETUP_DATABASE_PASSWORD || defaults.dbPassword,
       groqKey: env.SETUP_GROQ_KEY || defaults.groqKey,
       clientName: env.SETUP_CLIENT_NAME || defaults.clientName,
     };
@@ -79,12 +81,17 @@ async function collect() {
   };
 
   console.log("\nNaruhodo+ セットアップ");
-  console.log("値は Supabase ダッシュボード → Settings → API / Database から取得。\n");
+  console.log("値は Supabase ダッシュボード → Settings → API / Connect から取得。\n");
   const out = {
     supabaseUrl: await ask("Supabase API URL (https://xxxx.supabase.co)", defaults.supabaseUrl),
     anonKey: await ask("Supabase Publishable key (sb_publishable_... / anon)", defaults.anonKey, { secret: true }),
     serviceKey: await ask("Supabase Secret key (sb_secret_... / service_role)", defaults.serviceKey, { secret: true }),
-    dbUrl: await ask("Supabase DB 接続文字列（Session pooler の URI 推奨・*.pooler.supabase.com:5432）", defaults.dbUrl, { secret: true }),
+    dbUrl: await ask("Supabase DB 接続文字列（Session pooler の URI・*.pooler.supabase.com:5432）", defaults.dbUrl, { secret: true }),
+    dbPassword: await ask(
+      "DB パスワード（URI に含めているなら空 Enter。記号入りはここに生で貼ると確実）",
+      defaults.dbPassword,
+      { required: false, secret: true },
+    ),
     groqKey: await ask("Groq API key（用語調べ機能・任意。空でスキップ）", defaults.groqKey, { required: false, secret: true }),
     clientName: await ask("MCP 呼び出し元 AI 名", defaults.clientName),
   };
@@ -114,10 +121,12 @@ async function main() {
     `SUPABASE_SERVICE_ROLE_KEY=${v.serviceKey}`,
     ...(v.groqKey ? [`GROQ_API_KEY=${v.groqKey}`] : []),
   ]);
-  writeEnv(".env", [
+  const envLines = [
     `# npm run db:migrate 用。アプリ実行時には使わない`,
     `DATABASE_URL=${v.dbUrl}`,
-  ]);
+  ];
+  if (v.dbPassword) envLines.push(`DATABASE_PASSWORD=${v.dbPassword}`);
+  writeEnv(".env", envLines);
 
   console.log("\n次のステップ:");
   console.log("  1) npm run db:migrate   # スキーマを適用");
