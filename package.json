@@ -8,6 +8,8 @@
     "web"
   ],
   "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
     "dev:mcp": "npm run dev --workspace mcp-server",
     "dev:web": "npm run dev --workspace web",
     "build": "npm run build --workspaces --if-present",
@@ -15,5 +17,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.0"
   }
 }
