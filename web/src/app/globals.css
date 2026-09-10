@@ -295,6 +295,46 @@ code.choice-code {
   font-weight: 400;
 }
 
+/* セットアップのチェックリスト */
+.setupchecks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.setupchecks li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 0.92rem;
+}
+.setupchecks .mark {
+  flex: none;
+  width: 1.3em;
+  text-align: center;
+  font-weight: 700;
+}
+.setupchecks li.ok .mark {
+  color: var(--ok);
+}
+.setupchecks li.ng .mark {
+  color: var(--danger);
+}
+.setupchecks li.warn .mark {
+  color: var(--muted);
+}
+pre.cmd {
+  background: #1e1e1e;
+  color: #dcdcdc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 4px 0 8px;
+}
+
 /* ホームの復習おすすめ（コンパクト行） */
 .duelist {
   list-style: none;

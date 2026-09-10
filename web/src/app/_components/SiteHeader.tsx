@@ -23,6 +23,7 @@ export function SiteHeader() {
         <Link href="/search">検索</Link>
         <Link href="/review">復習</Link>
         <Link href="/knowledge">未出題の学び</Link>
+        <Link href="/setup">セットアップ</Link>
       </nav>
       <button onClick={logout}>ログアウト</button>
     </header>
