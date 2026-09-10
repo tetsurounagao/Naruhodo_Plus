@@ -6,6 +6,8 @@ export interface FilterState {
   status: QuizStatusFilter;
   sort: QuizSortKey;
   minStar: number;
+  /** true で非表示のクイズのみ表示（解除用） */
+  hiddenOnly: boolean;
 }
 
 const STATUS_LABELS: [QuizStatusFilter, string][] = [
@@ -75,6 +77,16 @@ export function QuizFilters({
             </option>
           ))}
         </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={value.hiddenOnly}
+          onChange={(e) =>
+            onChange({ ...value, hiddenOnly: e.target.checked })
+          }
+        />
+        非表示のみ
       </label>
     </div>
   );
