@@ -130,6 +130,31 @@ npm run build            # mcp-server と web をビルド
 
 ---
 
+## 8.5. バックアップ（無料枠を使う場合は必須級）
+
+Supabase の無料枠は自動バックアップがありません。手元でデータを退避しておきます。
+
+```bash
+npm run db:backup            # backups/naruhodo-<日時>.json に全テーブルの行を書き出し
+npm run db:backup -- --keep 30   # backups/ を新しい方から 30 個だけ残す
+```
+
+- `backups/` は `.gitignore` 済み（学びの内容やメモが入るため、コミット・共有しない）。
+- スキーマは `supabase/migrations` が正なので、バックアップは**行データのみ**。
+- **週 1 回**を目安に。`cron` や `launchd` で `npm run db:backup -- --keep 30` を回すと楽です。
+
+### 復元
+
+```bash
+npm run db:restore -- backups/naruhodo-20260101-120000.json        # ドライラン（何もしない）
+npm run db:restore -- backups/naruhodo-20260101-120000.json --yes  # 実行
+```
+
+⚠️ `--yes` を付けると対象テーブルの**既存行をすべて削除**してから書き戻します（全体は 1 トランザクション。失敗時は元に戻る）。
+先に `npm run db:migrate` でスキーマを最新にしてから実行してください。
+
+---
+
 ## 9. 確認
 
 Web の `/setup` ページを開き、チェックがすべて ✓ になっていれば完了です
@@ -143,6 +168,7 @@ Web の `/setup` ページを開き、チェックがすべて ✓ になって�
 | --- | --- |
 | `db:migrate` が `ENOTFOUND` / `ETIMEDOUT` | 接続文字列を **Session pooler**（`pooler.supabase.com:5432`）に。Direct は IPv6 専用のことがある |
 | `db:migrate` が「既存スキーマを検出…baseline」 | 正常。既に適用済みの DB を認識しただけ |
+| `db:restore` が FK エラー | バックアップとスキーマの世代がズレている可能性。`npm run db:migrate` 後に再実行 |
 | Web が `Cannot find module './vendor-chunks/...'` | 依存追加後のキャッシュ。`rm -rf web/.next && npm run dev:web` |
 | `/mcp` に naruhodo-plus が出ない | `npm run build` 済みか / 登録後に新セッションを開いたか確認。`claude mcp list` |
 | ログインしても弾かれる | Supabase の Site URL 設定、`web/.env.local` の 3 値、`/setup` のチェックを確認 |

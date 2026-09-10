@@ -10,37 +10,21 @@
  *
  * 使い方: npm run db:migrate
  */
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import { exit } from "node:process";
 import pg from "pg";
+import { repoRoot, resolveDbConfig, authHint } from "./lib/db-config.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = repoRoot;
 const migrationsDir = resolve(root, "supabase/migrations");
 
-function readEnvFile() {
-  const out = {};
-  const envPath = resolve(root, ".env");
-  if (existsSync(envPath)) {
-    for (const line of readFileSync(envPath, "utf8").split("\n")) {
-      const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
-    }
-  }
-  return out;
-}
-
 async function main() {
-  const fileEnv = readEnvFile();
-  const url = process.env.DATABASE_URL || fileEnv.DATABASE_URL || null;
-  // パスワードを URI に埋めずに別行で渡せる（記号のエスケープ不要）。
-  const passwordOverride =
-    process.env.DATABASE_PASSWORD || fileEnv.DATABASE_PASSWORD || undefined;
-  if (!url) {
-    console.error(
-      "DATABASE_URL が見つかりません。npm run setup を実行するか .env に設定してください。",
-    );
+  let config, usedPasswordOverride;
+  try {
+    ({ config, usedPasswordOverride } = resolveDbConfig());
+  } catch (e) {
+    console.error(e.message);
     exit(1);
   }
 
@@ -52,37 +36,9 @@ async function main() {
     return;
   }
 
-  // connectionString 任せにせず自分で分解する。URL に記号入りパスワードが
-  // そのまま入っていると new URL() が壊れるので、その場合は
-  // password 部分を [YOUR-PASSWORD] 等のプレースホルダにし DATABASE_PASSWORD を使う。
-  let parsed;
-  try {
-    parsed = new URL(url);
-  } catch {
-    console.error(
-      "DATABASE_URL を解析できませんでした。パスワードに記号が含まれる場合は、\n" +
-        "URL のパスワード部分を x などに置き換え、生パスワードを DATABASE_PASSWORD に書いてください。",
-    );
-    exit(1);
-  }
-
-  const config = {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : 5432,
-    user: decodeURIComponent(parsed.username),
-    password: passwordOverride ?? decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\//, "") || "postgres",
-    ssl: { rejectUnauthorized: false },
-  };
-  if (!config.password) {
-    console.error(
-      "パスワードが空です。DATABASE_PASSWORD に実際の DB パスワードを設定してください。",
-    );
-    exit(1);
-  }
   console.log(
     `接続先: ${config.user}@${config.host}:${config.port}/${config.database}` +
-      (passwordOverride ? "  (パスワードは DATABASE_PASSWORD を使用)" : ""),
+      (usedPasswordOverride ? "  (パスワードは DATABASE_PASSWORD を使用)" : ""),
   );
 
   const client = new pg.Client(config);
@@ -151,17 +107,7 @@ async function main() {
 
 main().catch((e) => {
   console.error("\nマイグレーション失敗:", e.message);
-  if (/password authentication failed/i.test(e.message)) {
-    console.error(
-      [
-        "",
-        "ヒント:",
-        "  - DATABASE_URL の [YOUR-PASSWORD] を実際の DB パスワードに置き換えたか確認",
-        "  - パスワードに記号(+ / @ ? # 等)が含まれると URI が壊れます。",
-        "    Supabase → Settings → Database → Reset database password で記号なしに再設定するのが確実",
-        "  - Session pooler の URI（ユーザー名は postgres.<project-ref>、ホストは *.pooler.supabase.com:5432）を使う",
-      ].join("\n"),
-    );
-  }
+  const hint = authHint(e.message);
+  if (hint) console.error(hint);
   exit(1);
 });
