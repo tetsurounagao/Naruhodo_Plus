@@ -11,6 +11,7 @@ const DEFAULT_FILTERS: FilterState = {
   status: "all",
   sort: "created_desc",
   minStar: 0,
+  hiddenOnly: false,
 };
 
 function SearchInner() {
@@ -52,6 +53,7 @@ function SearchInner() {
       status: filters.status,
       sort: filters.sort,
       minStar: String(filters.minStar),
+      hidden: filters.hiddenOnly ? "only" : "exclude",
     });
     if (qv) p.set("q", qv);
     if (tagList.length) p.set("tags", tagList.join(","));
@@ -196,6 +198,7 @@ function SearchInner() {
                 key={quiz.id}
                 quiz={quiz}
                 onAnswered={onAnswered}
+                onChanged={() => run()}
                 annotationsToggle
               />
             ))
