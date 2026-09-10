@@ -3,25 +3,29 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiGet } from "../lib/client";
-import type { TagStat } from "../lib/types";
+import type { ReviewItem, TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
 
+interface HomeData {
+  stats: TagStat[];
+  unanswered: number;
+  unquizzed: number;
+  quizTotal: number;
+  dueForReview: ReviewItem[];
+  dueCount: number;
+}
+
 export default function HomePage() {
-  const [stats, setStats] = useState<TagStat[] | null>(null);
-  const [unanswered, setUnanswered] = useState<number | null>(null);
-  const [unquizzed, setUnquizzed] = useState<number | null>(null);
+  const [data, setData] = useState<HomeData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<{ stats: TagStat[]; unanswered: number; unquizzed: number }>("/api/home")
-      .then((d) => {
-        setStats(d.stats);
-        setUnanswered(d.unanswered);
-        setUnquizzed(d.unquizzed);
-      })
+    apiGet<HomeData>("/api/home")
+      .then(setData)
       .catch((e: Error) => setError(e.message));
   }, []);
 
+  const stats = data?.stats ?? null;
   const weak = (stats ?? []).filter((s) => s.weak);
 
   return (
@@ -31,21 +35,44 @@ export default function HomePage() {
 
       <div className="card">
         <p>
-          未解答のクイズ: <strong>{unanswered ?? "…"}</strong> 件（
+          未解答のクイズ: <strong>{data?.unanswered ?? "…"}</strong> 件（
           <Link href="/quizzes">解く</Link>）
         </p>
         <p>
-          まだクイズ化されていない学び: <strong>{unquizzed ?? "…"}</strong> 件（
+          まだクイズ化されていない学び: <strong>{data?.unquizzed ?? "…"}</strong> 件（
           <Link href="/knowledge">一覧</Link>）
         </p>
       </div>
+
+      {data && data.dueForReview.length > 0 && (
+        <>
+          <h2>復習のおすすめ</h2>
+          <div className="card">
+            <ul className="duelist">
+              {data.dueForReview.map((it) => (
+                <li key={it.id}>
+                  <span className="days">{it.days_since}日前</span>
+                  <span className="q">{it.question}</span>
+                </li>
+              ))}
+            </ul>
+            <p style={{ marginTop: 12 }}>
+              <Link href="/review">
+                {data.dueCount > data.dueForReview.length
+                  ? `さらに表示（全 ${data.dueCount} 件）`
+                  : "復習ページで解く →"}
+              </Link>
+            </p>
+          </div>
+        </>
+      )}
 
       <h2>出題の内訳</h2>
       {stats === null ? (
         <p className="muted">読み込み中…</p>
       ) : (
         <div className="card">
-          <TagPie stats={stats} />
+          <TagPie stats={stats} quizTotal={data?.quizTotal ?? 0} />
         </div>
       )}
 

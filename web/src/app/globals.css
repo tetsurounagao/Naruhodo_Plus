@@ -158,6 +158,174 @@ code.choice-code {
   font-weight: 600;
 }
 
+/* star */
+.stars {
+  display: inline-flex;
+  gap: 1px;
+  line-height: 1;
+}
+.stars .star {
+  background: none;
+  border: none;
+  padding: 0 1px;
+  cursor: pointer;
+  color: #d5d5d0;
+  line-height: 1;
+}
+.stars .star.on {
+  color: #e6a800;
+}
+.stars .star:disabled {
+  cursor: default;
+}
+
+/* フィルタ行 */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 12px 0;
+}
+.filters label {
+  margin: 0;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.filters select,
+.filters input[type="text"] {
+  font: inherit;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  width: auto;
+}
+.filters input[type="checkbox"] {
+  width: auto;
+}
+
+/* クイズカードのメタ行 */
+.quizmeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+/* 注釈（メモ・リンク） */
+.annot {
+  border-top: 1px dashed var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.annot h4 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+.annot textarea {
+  width: 100%;
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  min-height: 60px;
+  resize: vertical;
+}
+.annot .links {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.annot .links li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+.annot .links .del {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 0 4px;
+  flex: none;
+}
+.annot .linktitle {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.annot .addrow {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.annot .addrow input {
+  flex: 1;
+}
+.annot .addrow button {
+  flex: none;
+  padding: 6px 12px;
+}
+
+/* 復習グループ */
+.reviewgroup {
+  margin: 20px 0;
+}
+.reviewgroup > h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 1.05rem;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--border);
+}
+.reviewgroup .count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ホームの復習おすすめ（コンパクト行） */
+.duelist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.duelist li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.duelist li:last-child {
+  border-bottom: none;
+}
+.duelist .days {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--danger);
+  font-weight: 700;
+  min-width: 4.5em;
+}
+.duelist .q {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 ul.choices button.correct {
   border-color: var(--ok);
   background: #e2f0e8;

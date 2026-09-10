@@ -20,11 +20,19 @@ interface Slice {
   color: string;
 }
 
-export function TagPie({ stats }: { stats: TagStat[] }) {
+export function TagPie({
+  stats,
+  quizTotal,
+}: {
+  stats: TagStat[];
+  /** 実際のクイズ数（中央に表示）。スライスは 1 問が複数タグに属するため合計は超えうる */
+  quizTotal: number;
+}) {
   const withQuizzes = stats
     .filter((s) => s.quiz_count > 0)
     .sort((a, b) => b.quiz_count - a.quiz_count);
 
+  // タグ付けののべ件数。円弧と % はこれを分母にする（合計 100% になる）
   const total = withQuizzes.reduce((sum, s) => sum + s.quiz_count, 0);
 
   if (total === 0) {
@@ -79,25 +87,30 @@ export function TagPie({ stats }: { stats: TagStat[] }) {
           );
         })}
         <text x="21" y="20.5" textAnchor="middle" className="tagpie-total">
-          {total}
+          {quizTotal}
         </text>
         <text x="21" y="25" textAnchor="middle" className="tagpie-unit">
           問
         </text>
       </svg>
 
-      <ul className="tagpie-legend">
-        {slices.map((s) => (
-          <li key={s.label}>
-            <span className="sw" style={{ background: s.color }} />
-            {s.label}
-            <span className="muted">
-              {" "}
-              {s.count}問 / {pct(s.count)}%
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <ul className="tagpie-legend">
+          {slices.map((s) => (
+            <li key={s.label}>
+              <span className="sw" style={{ background: s.color }} />
+              {s.label}
+              <span className="muted">
+                {" "}
+                {s.count}問 / {pct(s.count)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="muted" style={{ fontSize: "0.78rem", margin: "6px 0 0" }}>
+          % はタグ付けのべ {total} 件に対する割合
+        </p>
+      </div>
 
       {rest.length > 0 && (
         <details className="tagpie-breakdown">

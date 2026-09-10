@@ -451,19 +451,23 @@ export async function homeSummary(): Promise<{
   stats: TagStat[];
   unanswered: number;
   unquizzed: number;
+  quizTotal: number;
   dueForReview: ReviewItem[];
   dueCount: number;
 }> {
-  const [stats, unansweredQuizzes, unquizzed, due] = await Promise.all([
+  const supabase = getSupabaseAdmin();
+  const [stats, unansweredQuizzes, unquizzed, due, countRes] = await Promise.all([
     listTagStats(),
     listQuizzes({ status: "unanswered" }),
     listUnquizzedKnowledge(),
     dueForReview(),
+    supabase.from("quizzes").select("id", { count: "exact", head: true }),
   ]);
   return {
     stats,
     unanswered: unansweredQuizzes.length,
     unquizzed: unquizzed.length,
+    quizTotal: countRes.count ?? 0,
     dueForReview: due.slice(0, 5),
     dueCount: due.length,
   };
