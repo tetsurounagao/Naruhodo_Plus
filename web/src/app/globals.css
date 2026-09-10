@@ -441,6 +441,30 @@ code.choice-code {
   border-color: var(--accent);
 }
 
+/* ページネーション */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0 8px;
+}
+.pager button {
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  min-width: 34px;
+}
+.pager button.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.pager .gap {
+  color: var(--muted);
+  padding: 0 2px;
+}
+
 /* 復習グループ */
 .reviewgroup {
   margin: 20px 0;
