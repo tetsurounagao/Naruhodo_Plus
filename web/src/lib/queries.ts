@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseAdmin } from "./supabase/admin";
 import { weakTagThreshold } from "./env";
 import { reviewInfo } from "./review-schedule";
+import { normalizeTags } from "./normalize-tags";
 import type {
   AttemptResult,
   KnowledgeItem,
@@ -248,6 +249,111 @@ export async function setQuizAnnotation(
   ) as { star: number; note: string | null } | null;
   if (!row) throw new Error("quiz not found");
   return row;
+}
+
+/** tags テーブルに無い名前を作成し、name → id の対応表を返す。 */
+async function ensureTagIds(names: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (names.length === 0) return map;
+  const supabase = getSupabaseAdmin();
+  must(
+    await supabase
+      .from("tags")
+      .upsert(names.map((name) => ({ name })), {
+        onConflict: "name",
+        ignoreDuplicates: true,
+      })
+      .select("id"),
+    "タグの upsert",
+  );
+  const rows = must(
+    await supabase.from("tags").select("id, name").in("name", names),
+    "タグの取得",
+  ) as { id: string; name: string }[];
+  for (const r of rows) map.set(r.name, r.id);
+  return map;
+}
+
+/**
+ * クイズのタグを指定リストで置き換える（追加・削除の両方を 1 回で表現）。
+ * 名前はサーバー側で機械的に正規化する（AI 類似判定はしない）。
+ * 戻り値は正規化後のタグ名一覧。
+ */
+export async function setQuizTags(
+  quizId: string,
+  rawNames: string[],
+): Promise<string[]> {
+  const supabase = getSupabaseAdmin();
+  const exists = must(
+    await supabase.from("quizzes").select("id").eq("id", quizId).maybeSingle(),
+    "quiz 存在確認",
+  ) as { id: string } | null;
+  if (!exists) throw new Error("quiz not found");
+
+  const names = normalizeTags(rawNames).slice(0, 30);
+  const wanted = await ensureTagIds(names);
+  const wantedIds = new Set([...wanted.values()]);
+
+  const current = must(
+    await supabase.from("quiz_tags").select("tag_id").eq("quiz_id", quizId),
+    "quiz_tags 取得",
+  ) as { tag_id: string }[];
+  const currentIds = new Set(current.map((r) => r.tag_id));
+
+  const toAdd = [...wantedIds].filter((id) => !currentIds.has(id));
+  const toRemove = [...currentIds].filter((id) => !wantedIds.has(id));
+
+  if (toAdd.length > 0) {
+    must(
+      await supabase
+        .from("quiz_tags")
+        .upsert(
+          toAdd.map((tag_id) => ({ quiz_id: quizId, tag_id })),
+          { ignoreDuplicates: true },
+        )
+        .select("tag_id"),
+      "quiz_tags 追加",
+    );
+  }
+  if (toRemove.length > 0) {
+    must(
+      await supabase
+        .from("quiz_tags")
+        .delete()
+        .eq("quiz_id", quizId)
+        .in("tag_id", toRemove)
+        .select("tag_id"),
+      "quiz_tags 削除",
+    );
+  }
+  return names;
+}
+
+/** 直近 days 日に「生成された」クイズで使用が多いタグ（多い順）。手動追加の候補用。 */
+export async function recentlyActiveTags(
+  days = 5,
+  limit = 8,
+): Promise<{ name: string; count: number }[]> {
+  const supabase = getSupabaseAdmin();
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const rows = must(
+    await supabase
+      .from("quiz_tags")
+      .select("tags(name), quizzes!inner(created_at)")
+      .gte("quizzes.created_at", since),
+    "直近タグ集計",
+  ) as any[];
+
+  const count = new Map<string, number>();
+  for (const r of rows) {
+    const name: string | undefined = r.tags?.name;
+    if (!name) continue;
+    count.set(name, (count.get(name) ?? 0) + 1);
+  }
+  return [...count.entries()]
+    .map(([name, c]) => ({ name, count: c }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, limit);
 }
 
 export async function addQuizLink(quizId: string, url: string): Promise<QuizLink> {
