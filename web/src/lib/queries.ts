@@ -11,6 +11,7 @@ import type {
   QuizPublic,
   QuizSortKey,
   QuizStatusFilter,
+  HiddenFilter,
   ReviewItem,
   TagInfo,
   TagStat,
@@ -47,7 +48,15 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
 }
 
 const QUIZ_SELECT =
-  "id, question, choices, created_by, created_at, star, note, last_answered_at, quiz_tags(tags(name))";
+  "id, question, choices, created_by, created_at, star, note, hidden, last_answered_at, quiz_tags(tags(name))";
+
+/** hidden フィルタを Supabase クエリに適用する。 */
+function applyHidden<T>(query: T, hidden: HiddenFilter): T {
+  const q = query as any;
+  if (hidden === "exclude") return q.eq("hidden", false);
+  if (hidden === "only") return q.eq("hidden", true);
+  return q;
+}
 
 function tagsOf(row: any): string[] {
   return (row.quiz_tags ?? [])
@@ -69,6 +78,7 @@ function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
     last_answered_at: row.last_answered_at ?? null,
     star: row.star ?? 0,
     note: row.note ?? null,
+    hidden: row.hidden ?? false,
   };
 }
 
@@ -126,6 +136,7 @@ export interface ListQuizzesOpts {
   status?: QuizStatusFilter;
   sort?: QuizSortKey;
   minStar?: number;
+  hidden?: HiddenFilter;
   /** 後方互換: true で status="unanswered" 相当 */
   unansweredOnly?: boolean;
   limit?: number;
@@ -148,7 +159,10 @@ export async function listQuizzes(opts: ListQuizzesOpts): Promise<QuizPublic[]> 
   ]);
   if (idFilter && idFilter.size === 0) return [];
 
-  let query = supabase.from("quizzes").select(QUIZ_SELECT);
+  let query = applyHidden(
+    supabase.from("quizzes").select(QUIZ_SELECT),
+    opts.hidden ?? "exclude",
+  );
   if (idFilter) query = query.in("id", [...idFilter]);
   const rows = must(await query, "quizzes 取得") as any[];
 
@@ -226,11 +240,11 @@ export async function gradeAndRecord(
   };
 }
 
-/** star / note の更新。 */
+/** star / note / hidden の更新。 */
 export async function setQuizAnnotation(
   id: string,
-  patch: { star?: number; note?: string | null },
-): Promise<{ star: number; note: string | null }> {
+  patch: { star?: number; note?: string | null; hidden?: boolean },
+): Promise<{ star: number; note: string | null; hidden: boolean }> {
   const supabase = getSupabaseAdmin();
   const update: Record<string, unknown> = {};
   if (patch.star !== undefined) {
@@ -241,12 +255,20 @@ export async function setQuizAnnotation(
   if (patch.note !== undefined) {
     update.note = patch.note === "" ? null : patch.note;
   }
+  if (patch.hidden !== undefined) {
+    update.hidden = !!patch.hidden;
+  }
   if (Object.keys(update).length === 0) throw new Error("更新する項目がありません");
 
   const row = must(
-    await supabase.from("quizzes").update(update).eq("id", id).select("star, note").maybeSingle(),
+    await supabase
+      .from("quizzes")
+      .update(update)
+      .eq("id", id)
+      .select("star, note, hidden")
+      .maybeSingle(),
     "注釈の更新",
-  ) as { star: number; note: string | null } | null;
+  ) as { star: number; note: string | null; hidden: boolean } | null;
   if (!row) throw new Error("quiz not found");
   return row;
 }
@@ -400,11 +422,23 @@ export async function deleteQuizLink(quizId: string, linkId: string): Promise<vo
   );
 }
 
+/** 非表示でないクイズに紐づく quiz_tags（tag_id のみ）。集計用。 */
+async function visibleQuizTagIds(): Promise<string[]> {
+  const rows = must(
+    await getSupabaseAdmin()
+      .from("quiz_tags")
+      .select("tag_id, quizzes!inner(hidden)")
+      .eq("quizzes.hidden", false),
+    "quiz_tags 取得",
+  ) as { tag_id: string }[];
+  return rows.map((r) => r.tag_id);
+}
+
 /** クイズ未生成の学び一覧。「クイズ化を依頼」用。 */
 export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem[]> {
   const supabase = getSupabaseAdmin();
   const [quizRes, rowsRes] = await Promise.all([
-    supabase.from("quizzes").select("source_knowledge_id"),
+    supabase.from("quizzes").select("source_knowledge_id").eq("hidden", false),
     supabase
       .from("knowledge_items")
       .select("*, knowledge_item_tags(tags(name))")
@@ -437,18 +471,17 @@ export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem
 
 export async function listTagStats(): Promise<TagStat[]> {
   const supabase = getSupabaseAdmin();
-  const [statsRes, qtRes] = await Promise.all([
+  const [statsRes, visibleTagIds] = await Promise.all([
     supabase.from("tag_stats").select("*").order("total_attempts", { ascending: false }),
-    supabase.from("quiz_tags").select("tag_id"),
+    visibleQuizTagIds(),
   ]);
   const rows = must(statsRes, "tag_stats 取得") as Omit<
     TagStat,
     "weak" | "quiz_count"
   >[];
-  const qtRows = must(qtRes, "quiz_tags 取得") as { tag_id: string }[];
   const quizCountByTag = new Map<string, number>();
-  for (const r of qtRows) {
-    quizCountByTag.set(r.tag_id, (quizCountByTag.get(r.tag_id) ?? 0) + 1);
+  for (const tid of visibleTagIds) {
+    quizCountByTag.set(tid, (quizCountByTag.get(tid) ?? 0) + 1);
   }
 
   const { minAttempts, maxAccuracy } = weakTagThreshold;
@@ -465,18 +498,17 @@ export async function listTagStats(): Promise<TagStat[]> {
 /** 全タグ（色・クイズ数つき）。/tags ページと色マップに使う。 */
 export async function listTags(): Promise<TagInfo[]> {
   const supabase = getSupabaseAdmin();
-  const [tagsRes, qtRes] = await Promise.all([
+  const [tagsRes, visibleTagIds] = await Promise.all([
     supabase.from("tags").select("id, name, color"),
-    supabase.from("quiz_tags").select("tag_id"),
+    visibleQuizTagIds(),
   ]);
   const tags = must(tagsRes, "tags 取得") as {
     id: string;
     name: string;
     color: string | null;
   }[];
-  const qtRows = must(qtRes, "quiz_tags 取得") as { tag_id: string }[];
   const count = new Map<string, number>();
-  for (const r of qtRows) count.set(r.tag_id, (count.get(r.tag_id) ?? 0) + 1);
+  for (const tid of visibleTagIds) count.set(tid, (count.get(tid) ?? 0) + 1);
 
   return tags
     .map((t) => ({ ...t, quiz_count: count.get(t.id) ?? 0 }))
@@ -512,19 +544,21 @@ export interface SearchOpts {
   minStar?: number;
   includeNote?: boolean;
   includeLinkTitles?: boolean;
+  hidden?: HiddenFilter;
   /** 生成日レンジ（ISO）。created_at >= from かつ < to */
   createdFrom?: string;
   createdTo?: string;
   limit?: number;
 }
 
-/** 稼働カレンダー用: 直近 days 日のクイズ生成日時（ISO）の配列。 */
+/** 稼働カレンダー用: 直近 days 日のクイズ生成日時（ISO）の配列。非表示は除外。 */
 export async function activityTimestamps(days = 190): Promise<string[]> {
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
   const rows = must(
     await getSupabaseAdmin()
       .from("quizzes")
       .select("created_at")
+      .eq("hidden", false)
       .gte("created_at", since),
     "生成日時の取得",
   ) as { created_at: string }[];
@@ -567,7 +601,10 @@ export async function searchQuizzes(opts: SearchOpts): Promise<QuizPublic[]> {
     }
   }
 
-  let query = supabase.from("quizzes").select(QUIZ_SELECT);
+  let query = applyHidden(
+    supabase.from("quizzes").select(QUIZ_SELECT),
+    opts.hidden ?? "exclude",
+  );
   if (idFilter) query = query.in("id", [...idFilter]);
   const rows = must(await query, "quizzes 取得") as any[];
 
@@ -597,7 +634,7 @@ export async function searchQuizzes(opts: SearchOpts): Promise<QuizPublic[]> {
 export async function dueForReview(): Promise<ReviewItem[]> {
   const supabase = getSupabaseAdmin();
   const [rowsRes, agg] = await Promise.all([
-    supabase.from("quizzes").select(QUIZ_SELECT),
+    supabase.from("quizzes").select(QUIZ_SELECT).eq("hidden", false),
     attemptAggByQuiz(),
   ]);
   const rows = must(rowsRes, "quizzes 取得") as any[];
@@ -628,7 +665,10 @@ export async function homeSummary(): Promise<{
     listQuizzes({ status: "unanswered" }),
     listUnquizzedKnowledge(),
     dueForReview(),
-    supabase.from("quizzes").select("id", { count: "exact", head: true }),
+    supabase
+      .from("quizzes")
+      .select("id", { count: "exact", head: true })
+      .eq("hidden", false),
   ]);
   return {
     stats,

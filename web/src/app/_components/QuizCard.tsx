@@ -23,11 +23,13 @@ function fmtDate(iso: string | null): string | null {
 export function QuizCard({
   quiz,
   onAnswered,
+  onChanged,
   extraMeta,
   annotationsToggle = false,
 }: {
   quiz: QuizPublic;
   onAnswered?: (quizId: string, result: AttemptResult) => void;
+  onChanged?: (quizId: string) => void;
   extraMeta?: string;
   annotationsToggle?: boolean;
 }) {
@@ -94,6 +96,8 @@ export function QuizCard({
             initialLinks={quiz.links}
             initialTags={tags}
             onTagsChange={setTags}
+            initialHidden={quiz.hidden}
+            onHiddenChange={() => onChanged?.(quiz.id)}
           />
         </details>
       )}

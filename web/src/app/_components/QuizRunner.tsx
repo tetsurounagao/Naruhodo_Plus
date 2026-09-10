@@ -118,6 +118,7 @@ export function QuizRunner({
           initialNote={quiz.note}
           initialLinks={quiz.links}
           initialTags={quiz.tags}
+          initialHidden={quiz.hidden}
         />
       )}
 
