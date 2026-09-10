@@ -24,6 +24,15 @@ export function QuizAnnotations({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const savedNote = useRef(initialNote ?? "");
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  // 内容に合わせて高さを自動調整（上限あり）
+  useEffect(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 400) + "px";
+  }, [note]);
 
   useEffect(() => {
     if (!initialLinks) {
@@ -83,6 +92,7 @@ export function QuizAnnotations({
     <div className="annot">
       <h4>メモ</h4>
       <textarea
+        ref={noteRef}
         value={note}
         placeholder="調べたことや補足など"
         onChange={(e) => setNote(e.target.value)}
