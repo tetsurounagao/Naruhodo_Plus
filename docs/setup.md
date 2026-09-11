@@ -59,6 +59,11 @@ npm run setup
 （既存ファイルは上書きしません。作り直すなら `npm run setup -- --force`）。
 Groq API キーは任意（用語調べ機能。後からでも可）。
 
+> **ブラウザで設定したい場合**: `npm run dev:web` で起動して <http://localhost:3000/connect> を開くと、
+> 値を貼って接続テスト → `.env` 生成／書き出しができます（CLI の代わり）。
+> Vercel にデプロイする場合も、`/connect` の「接続テスト」で値の正しさを確認してから
+> Environment Variables に貼ると確実です。
+
 ---
 
 ## 4. データベースのスキーマを適用

@@ -4,21 +4,33 @@ import { updateSession } from "./lib/supabase/middleware";
 /**
  * - すべてのリクエストでセッション Cookie を更新する
  * - 未ログインで保護ページに来たら /login へ
- * - 未ログインで /api/* に来たら 401 JSON（/api/auth/* は除く）
+ * - 未ログインで /api/* に来たら 401 JSON（/api/auth/*・/api/connect/* は除く）
+ * - 環境変数未設定など Supabase クライアントを作れないときは /connect へ誘導
  */
-const PUBLIC_PATHS = ["/login"];
-const PUBLIC_API_PREFIXES = ["/api/auth/"];
+const PUBLIC_PATHS = ["/login", "/connect"];
+const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/connect/"];
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
   const isApi = pathname.startsWith("/api/");
   const isPublicApi = PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
 
+  let session: Awaited<ReturnType<typeof updateSession>>;
+  try {
+    session = await updateSession(request);
+  } catch {
+    // Supabase の環境変数が無い / 壊れている。セットアップウィザードだけ通す。
+    if (isPublicPage || isPublicApi) return NextResponse.next();
+    if (isApi) return NextResponse.json({ error: "not_configured" }, { status: 503 });
+    return NextResponse.redirect(new URL("/connect", request.url));
+  }
+
+  const { response, user } = session;
+
   if (user) {
-    // ログイン済みで /login に来たらトップへ
+    // ログイン済みで /login に来たらトップへ（/connect は再設定用に許可）
     if (pathname === "/login") {
       return NextResponse.redirect(new URL("/", request.url));
     }
