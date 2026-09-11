@@ -21,6 +21,8 @@ const DESCRIPTION = `会話で生成した選択式クイズを1問保存する�
   - content: 表示内容。type が "code" ならコード文字列そのもの、"image" なら画像URL。
   - language: type が "code" のときのハイライト言語（"ts" "python" "sql" など）。任意。
 - correct_answer: 正解の選択肢の id（content ではなく id）。
+- choices を渡す順序は気にしなくてよい。正解を先頭に置いて残りを後から書いてよい
+  （並び順は保存時にサーバー側でランダムに入れ替わる。id は変わらないので correct_answer の指定はそのままでよい）。
 - explanation: なぜその答えになるかの簡潔な解説。Markdown 可。コードは \`\`\` フェンスで。
 - source_knowledge_id: 元にした学びの id（list_knowledge の [id]）。分かる場合は必ず付ける。
 - tags: 元の学びのタグを引き継ぐ。半角英数の短い文字列。表記ゆれは自動正規化。
