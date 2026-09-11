@@ -12,6 +12,7 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:backup": "node scripts/backup.mjs",
     "db:restore": "node scripts/restore.mjs",
+    "fix:quiz-choice-order": "node scripts/reshuffle-quiz-choices.mjs",
     "dev:mcp": "npm run dev --workspace mcp-server",
     "dev:web": "npm run dev --workspace web",
     "build": "npm run build --workspaces --if-present",
