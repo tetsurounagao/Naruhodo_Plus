@@ -10,7 +10,14 @@ let availableCache: boolean | null = null;
 interface Result {
   term: string;
   text: string;
+  sites: string[];
+  query: string | null;
   cached: boolean;
+  added: boolean;
+}
+
+function googleSearchUrl(query: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
 /**
@@ -33,10 +40,9 @@ export function ExplainPopover({
     null,
   );
   const [manual, setManual] = useState("");
-  const [result, setResult] = useState<Result | null>(null);
+  const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     if (availableCache !== null) return;
@@ -79,20 +85,34 @@ export function ExplainPopover({
   async function run(term: string, context?: string) {
     setBusy(true);
     setErr(null);
-    setResult(null);
-    setAdded(false);
     setFab(null);
     try {
-      const r = await apiPost<{ text: string; cached: boolean }>("/api/explain", {
-        term,
-        context,
-      });
-      setResult({ term, text: r.text, cached: r.cached });
+      const r = await apiPost<{
+        text: string;
+        sites: string[];
+        query: string | null;
+        cached: boolean;
+      }>("/api/explain", { term, context });
+      setResults((prev) => [
+        ...prev,
+        { term, text: r.text, sites: r.sites, query: r.query, cached: r.cached, added: false },
+      ]);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  function closeResult(i: number) {
+    setResults((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function addToNote(i: number) {
+    const r = results[i];
+    if (!onAddToNote) return;
+    await onAddToNote(`**${r.term}**: ${r.text}`);
+    setResults((prev) => prev.map((x, idx) => (idx === i ? { ...x, added: true } : x)));
   }
 
   if (!available) return <>{children}</>;
@@ -132,42 +152,50 @@ export function ExplainPopover({
         </form>
       )}
 
-      {busy && !result && <p className="muted">調べています…</p>}
+      {busy && <p className="muted">調べています…</p>}
 
-      {(result || err) && (
+      {err && (
         <div className="explain-card">
-          {err ? (
-            <p className="error" style={{ margin: 0 }}>
-              {err}
-            </p>
-          ) : (
-            <>
-              <p style={{ fontWeight: 600, margin: 0 }}>{result!.term}</p>
-              <div style={{ margin: "6px 0" }}>
-                <Markdown>{result!.text}</Markdown>
-              </div>
-              <p className="muted" style={{ fontSize: "0.78rem", margin: "0 0 8px" }}>
-                AI の下書きです。必ず一次情報で確認してください。
-                {result!.cached ? "（キャッシュ）" : ""}
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {onAddToNote && (
-                  <button
-                    onClick={async () => {
-                      await onAddToNote(`**${result!.term}**: ${result!.text}`);
-                      setAdded(true);
-                    }}
-                    disabled={added}
-                  >
-                    {added ? "追記しました" : "メモに追記"}
-                  </button>
-                )}
-                <button onClick={() => setResult(null)}>閉じる</button>
-              </div>
-            </>
-          )}
+          <p className="error" style={{ margin: 0 }}>
+            {err}
+          </p>
         </div>
       )}
+
+      {results.map((r, i) => (
+        <div className="explain-card" key={i}>
+          <p style={{ fontWeight: 600, margin: 0 }}>{r.term}</p>
+          <div style={{ margin: "6px 0" }}>
+            <Markdown>{r.text}</Markdown>
+          </div>
+          {(r.sites.length > 0 || r.query) && (
+            <p className="muted" style={{ fontSize: "0.82rem", margin: "0 0 8px" }}>
+              確認の手がかり:
+              {r.sites.length > 0 && ` ${r.sites.join(" / ")}`}
+              {r.query && (
+                <>
+                  {" "}
+                  <a href={googleSearchUrl(r.query)} target="_blank" rel="noreferrer">
+                    「{r.query}」で検索
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+          <p className="muted" style={{ fontSize: "0.78rem", margin: "0 0 8px" }}>
+            AI の下書きです。必ず一次情報で確認してください。
+            {r.cached ? "（キャッシュ）" : ""}
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {onAddToNote && (
+              <button onClick={() => addToNote(i)} disabled={r.added}>
+                {r.added ? "追記しました" : "メモに追記"}
+              </button>
+            )}
+            <button onClick={() => closeResult(i)}>閉じる</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
