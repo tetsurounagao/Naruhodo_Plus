@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { shuffleChoices } from "./lib/shuffle-choices.js";
 
 /**
  * DB アクセス層（CRUD のみ）。MCP サーバーは生成 AI ロジックを持たず、
@@ -199,7 +200,8 @@ export async function insertQuiz(
     .from("quizzes")
     .insert({
       question: input.question,
-      choices: input.choices,
+      // 正解の位置が偏らないよう保存前に機械的にシャッフル（id は不変なので correct_answer は影響を受けない）
+      choices: shuffleChoices(input.choices),
       correct_answer: input.correctAnswer,
       explanation: input.explanation ?? null,
       source_knowledge_id: input.sourceKnowledgeId ?? null,
