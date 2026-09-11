@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/client";
-import type { AttemptResult, ReviewItem } from "../../lib/types";
+import type { ReviewItem } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
 
 const BUCKETS: { min: number; label: string }[] = [
@@ -28,10 +28,9 @@ export default function ReviewPage() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
-  function onAnswered(quizId: string, result: AttemptResult) {
-    // 回答したら復習対象から外す
+  function onClosed(quizId: string) {
+    // 採点結果を見せ終えて閉じたら復習対象から外す（回答直後だとまだ結果が見えていない）
     setItems((prev) => (prev ? prev.filter((i) => i.id !== quizId) : prev));
-    void result;
   }
 
   if (error) return <p className="error">{error}</p>;
@@ -62,7 +61,7 @@ export default function ReviewPage() {
               <QuizCard
                 key={it.id}
                 quiz={it}
-                onAnswered={onAnswered}
+                onClosed={onClosed}
                 extraMeta={`${it.days_since}日前`}
               />
             ))}

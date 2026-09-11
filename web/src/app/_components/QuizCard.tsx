@@ -24,12 +24,15 @@ export function QuizCard({
   quiz,
   onAnswered,
   onChanged,
+  onClosed,
   extraMeta,
   annotationsToggle = false,
 }: {
   quiz: QuizPublic;
   onAnswered?: (quizId: string, result: AttemptResult) => void;
   onChanged?: (quizId: string) => void;
+  /** 解答後、QuizRunner の「閉じる」が押されたときに呼ばれる（採点結果を見せ終えたタイミング）。 */
+  onClosed?: (quizId: string) => void;
   extraMeta?: string;
   annotationsToggle?: boolean;
 }) {
@@ -77,7 +80,10 @@ export function QuizCard({
         <QuizRunner
           quizId={quiz.id}
           onAnswered={onAnswered}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            onClosed?.(quiz.id);
+          }}
         />
       ) : (
         <button className="primary" onClick={() => setOpen(true)}>
