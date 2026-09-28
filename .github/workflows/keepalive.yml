@@ -1,0 +1,45 @@
+name: Supabase keepalive
+
+# Supabase の無料枠は 7 日間アクセスが無いとプロジェクトが一時停止される。
+# 週 2 回、REST 経由で DB を 1 行だけ読んで「使われている」状態を保つ。
+#
+# 必要な Secrets（Settings → Secrets and variables → Actions）:
+#   SUPABASE_URL               例: https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY  Secret key（sb_secret_… / service_role）
+# 未設定ならスキップして成功扱い（フォーク直後に毎回失敗メールが飛ばないように）。
+
+on:
+  schedule:
+    # 月・木 03:00 UTC（日本時間 12:00）。最大でも 4 日しか空かない
+    - cron: "0 3 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Ping database
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY が未設定のためスキップします。"
+            exit 0
+          fi
+
+          status=$(curl -sS --max-time 30 -o /tmp/res.json -w "%{http_code}" \
+            "${SUPABASE_URL%/}/rest/v1/knowledge_items?select=id&limit=1" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY")
+          echo "HTTP $status"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase への問い合わせに失敗しました（HTTP $status）。プロジェクトが停止している場合は、ダッシュボードで Restore してください。"
+            cat /tmp/res.json || true
+            exit 1
+          fi
+          echo "OK: DB に到達しました。"
