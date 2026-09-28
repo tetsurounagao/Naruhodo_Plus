@@ -160,7 +160,39 @@ npm run db:restore -- backups/naruhodo-20260101-120000.json --yes  # 実行
 
 ---
 
-## 10. 確認
+## 10. 一時停止の防止（Supabase 無料枠・任意）
+
+Supabase の無料枠は **7 日間アクセスが無いとプロジェクトが一時停止**されます。
+`.github/workflows/keepalive.yml` が GitHub Actions で週 2 回（月・木 03:00 UTC ＝ 日本時間 12:00）、
+REST で DB を 1 行だけ読んで停止を防ぎます。
+
+自分のリポジトリ（フォーク）の **Settings → Secrets and variables → Actions → New repository secret** に 2 つ登録するだけ:
+
+| Secret 名 | 値 |
+| --- | --- |
+| `SUPABASE_URL` | `https://xxxx.supabase.co`（API URL） |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret key（`sb_secret_…`） |
+
+CLI なら:
+
+```bash
+gh secret set SUPABASE_URL
+gh secret set SUPABASE_SERVICE_ROLE_KEY
+```
+
+登録後、**Actions → Supabase keepalive → Run workflow** で 1 回手動実行して緑になることを確認してください。
+
+- Secrets が未設定ならスキップして成功扱い（何も起きません）。
+- DB に届かなかった（HTTP 200 以外）場合は job が失敗し、GitHub からメールで通知されます。
+- **すでに停止してしまった後は自動復旧しません**。Supabase ダッシュボードで Restore してください。
+- GitHub は公開リポジトリで **60 日間リポジトリの活動が無いとスケジュール実行を自動で無効化**します。
+  無効化されたら Actions タブの警告から再有効化するか、何かコミットしてください。
+- 公式に「この方法で必ず停止しない」と保証されているわけではありませんが、API 経由の定期アクセスで
+  一般的に停止を防げます。心配なら `db:backup`（§9）も併用してください。
+
+---
+
+## 11. 確認
 
 Web の `/setup` ページを開き、チェックがすべて ✓ になっていれば完了です
 （Groq は任意なので設定しなければ `–` のままで問題ありません）。
