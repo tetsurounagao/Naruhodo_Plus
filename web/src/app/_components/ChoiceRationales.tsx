@@ -2,13 +2,8 @@
 
 import type { AttemptResult, QuizChoice } from "../../lib/types";
 import { Markdown } from "./Markdown";
+import { ChoiceContent } from "./ChoiceContent";
 
-/** 選択肢の中身を 1 行ぶんの見出しとして出す（画像は小さく）。 */
-function ChoiceLabel({ choice }: { choice: QuizChoice }) {
-  if (choice.type === "code") return <code className="choice-code">{choice.content}</code>;
-  if (choice.type === "image") return <img className="rationale-img" src={choice.content} alt="" />;
-  return <span>{choice.content}</span>;
-}
 
 /**
  * 誤答したとき、選んだ選択肢がなぜ違うのかを結果表示のすぐ下に目立たせて出す。
@@ -30,7 +25,7 @@ export function PickedRationale({
   return (
     <div className="picked-rationale">
       <p className="picked-rationale-head">
-        選んだ選択肢: <ChoiceLabel choice={choice} /> が違う理由
+        選んだ選択肢: <ChoiceContent choice={choice} compact /> が違う理由
       </p>
       <Markdown>{text}</Markdown>
     </div>
@@ -59,7 +54,7 @@ export function ChoiceRationales({
             <li key={c.id} className={isCorrect ? "correct" : ""}>
               <p className="choice-rationale-head">
                 <span className={isCorrect ? "badge-ok" : "badge-ng"}>{isCorrect ? "正解" : "誤り"}</span>
-                <ChoiceLabel choice={c} />
+                <ChoiceContent choice={c} compact />
                 {c.id === selected && <span className="muted">（あなたの回答）</span>}
               </p>
               {rationales[c.id] ? (

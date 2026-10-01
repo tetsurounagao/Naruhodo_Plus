@@ -6,10 +6,12 @@ import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import { feedback, useSoundOn } from "../../lib/feedback";
+import { notifyAnswered } from "../../lib/daily-goal";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
+import { ChoiceContent } from "./ChoiceContent";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
@@ -61,6 +63,7 @@ export function QuizRunner({
       setConfidence(conf);
       setResult(r);
       feedback(!r.is_correct ? "wrong" : conf === "unsure" ? "unsure" : "correct", sound);
+      notifyAnswered();
       onAnswered?.(quizId, r);
     } catch (e) {
       setError((e as Error).message);
@@ -109,13 +112,7 @@ export function QuizRunner({
                     disabled={!!result}
                     onClick={() => setSelected(c.id)}
                   >
-                    {c.type === "code" ? (
-                      <code className="choice-code">{c.content}</code>
-                    ) : c.type === "image" ? (
-                      <img src={c.content} alt="" />
-                    ) : (
-                      c.content
-                    )}
+                    <ChoiceContent choice={c} />
                   </button>
                 </li>
               );

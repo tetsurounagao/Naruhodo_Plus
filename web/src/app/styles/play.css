@@ -1,0 +1,3 @@
+/* 解答 UI（/play・QuizRunner・QuizSession・SessionSummary・結果バー） のスタイル。
+   並列作業でのコンフリクトを避けるため、画面ごとにファイルを分けている（layout.tsx で読み込む）。
+   色は globals.css の変数だけを使う。 */

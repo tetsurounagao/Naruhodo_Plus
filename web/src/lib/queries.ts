@@ -96,6 +96,7 @@ function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
     created_at: row.created_at,
     attempt_count: a.count,
     last_correct: a.lastCorrect,
+    correct_streak: a.correctStreak,
     last_answered_at: row.last_answered_at ?? null,
     star: row.star ?? 0,
     note: row.note ?? null,

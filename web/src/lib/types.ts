@@ -31,6 +31,8 @@ export interface QuizPublic {
   created_at: string;
   attempt_count: number;
   last_correct: boolean | null;
+  /** 自信ありの連続正解回数（なるほど電球の明るさ・復習間隔の元） */
+  correct_streak: number;
   last_answered_at: string | null;
   star: number;
   note: string | null;
