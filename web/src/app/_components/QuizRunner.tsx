@@ -11,15 +11,17 @@ import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
-import { ChoiceContent } from "./ChoiceContent";
+import { ChoiceTiles } from "./ChoiceTiles";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
+import { BulbChange } from "./BulbChange";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
 
 /**
  * 1 問を解く UI。設問文は呼び出し側（QuizCard）が表示している前提でここでは繰り返さない。
- * 選択肢・採点結果・解説・star/メモ/リンクの編集を描画する。
- * onAnswered で親（一覧）が回答回数などをその場で更新できる。
+ * 選択肢（/play と同じタイル・1 列）・採点結果・解説・star/メモ/リンクの編集を描画する。
+ * 回答ボタンと結果は /play と違って固定バーにせず、カードの中に出す。
+ * onAnswered で親（一覧）が回答回数・なるほど電球などをその場で更新できる。
  */
 export function QuizRunner({
   quizId,
@@ -28,7 +30,7 @@ export function QuizRunner({
   onFixNoteChange,
 }: {
   quizId: string;
-  onAnswered?: (quizId: string, result: AttemptResult) => void;
+  onAnswered?: (quizId: string, result: AttemptResult, confidence: Confidence) => void;
   onClose: () => void;
   /** 「問題がおかしい」フラグの変更を親（カードの表示）に伝える */
   onFixNoteChange?: (fixNote: string | null) => void;
@@ -64,7 +66,7 @@ export function QuizRunner({
       setResult(r);
       feedback(!r.is_correct ? "wrong" : conf === "unsure" ? "unsure" : "correct", sound);
       notifyAnswered();
-      onAnswered?.(quizId, r);
+      onAnswered?.(quizId, r, conf);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -86,7 +88,7 @@ export function QuizRunner({
   const hideChoices = recallFirst && !revealed && !result;
 
   return (
-    <div>
+    <div className="runner">
       {hideChoices ? (
         <div className="recall-prompt">
           <p className="muted">まず自分で答えを考えてから、選択肢を表示してください。</p>
@@ -96,28 +98,12 @@ export function QuizRunner({
         </div>
       ) : (
         <>
-          <ul className="choices">
-            {quiz.choices.map((c) => {
-              let cls = "";
-              if (result) {
-                if (c.id === result.correct_answer) cls = "correct";
-                else if (c.id === selected) cls = "wrong";
-              } else if (c.id === selected) {
-                cls = "selected";
-              }
-              return (
-                <li key={c.id}>
-                  <button
-                    className={cls}
-                    disabled={!!result}
-                    onClick={() => setSelected(c.id)}
-                  >
-                    <ChoiceContent choice={c} />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <ChoiceTiles
+            choices={quiz.choices}
+            selected={selected}
+            result={result}
+            onSelect={setSelected}
+          />
 
           {!result && <AnswerButtons disabled={!selected || busy} onSubmit={submit} />}
         </>
@@ -125,15 +111,31 @@ export function QuizRunner({
 
       {result && (
         <>
-          <ResultLabel isCorrect={result.is_correct} confidence={confidence} />
+          <div
+            className={`runner-result ${!result.is_correct ? "ng" : confidence === "unsure" ? "unsure" : "ok"}`}
+            aria-live="polite"
+          >
+            <ResultLabel isCorrect={result.is_correct} confidence={confidence} />
+            <BulbChange
+              prevStreak={quiz.correct_streak}
+              isCorrect={result.is_correct}
+              confidence={confidence}
+              size={18}
+            />
+          </div>
           <PickedRationale choices={quiz.choices} selected={selected} result={result} />
           {result.explanation && (
-            <ExplainPopover showInput onAddToNote={appendToNote}>
-              <Markdown>{result.explanation}</Markdown>
-            </ExplainPopover>
+            <div className="sticky answer-note">
+              <p className="answer-note-head">解説</p>
+              <ExplainPopover showInput onAddToNote={appendToNote}>
+                <Markdown>{result.explanation}</Markdown>
+              </ExplainPopover>
+            </div>
           )}
-          <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
-          <SourceKnowledgeView knowledge={result.source_knowledge} />
+          <div className="answer-rows">
+            <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
+            <SourceKnowledgeView knowledge={result.source_knowledge} />
+          </div>
         </>
       )}
 

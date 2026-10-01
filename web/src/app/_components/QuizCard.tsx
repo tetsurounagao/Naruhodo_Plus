@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiPost } from "../../lib/client";
-import type { AttemptResult, QuizPublic } from "../../lib/types";
+import { MASTERY_LABELS, masteryOf, nextStreak } from "../../lib/mastery";
+import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { Stars } from "./Stars";
 import { Tag } from "./Tag";
@@ -10,6 +11,7 @@ import { QuizRunner } from "./QuizRunner";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
 import { CopyPromptButton } from "./CopyPromptButton";
+import { Bulb } from "./Bulb";
 import { rephraseQuizPrompt } from "../../lib/quiz-prompts";
 
 /** この回数以上解いていて前回正解なら「言い換えた問題を依頼」を出す */
@@ -45,6 +47,22 @@ export function QuizCard({
   const [star, setStar] = useState(quiz.star);
   const [tags, setTags] = useState<string[]>(quiz.tags);
   const [fixNote, setFixNote] = useState<string | null>(quiz.fix_note);
+  // なるほど電球の元（自信ありの連続正解回数）。解いたらその場で更新する
+  const [streak, setStreak] = useState(quiz.correct_streak);
+  const [brightened, setBrightened] = useState(false);
+
+  // 親が一覧を取り直して新しい値が来たら合わせる
+  useEffect(() => {
+    setStreak(quiz.correct_streak);
+    setBrightened(false);
+  }, [quiz.correct_streak]);
+
+  function handleAnswered(quizId: string, result: AttemptResult, confidence: Confidence) {
+    const next = nextStreak(streak, result.is_correct, confidence);
+    setBrightened(masteryOf(next) > masteryOf(streak));
+    setStreak(next);
+    onAnswered?.(quizId, result);
+  }
 
   async function saveStar(v: number) {
     const prev = star;
@@ -70,6 +88,11 @@ export function QuizCard({
       </div>
 
       <div className="quizmeta">
+        <span className="quizmeta-bulb">
+          <Bulb level={masteryOf(streak)} size={18} brightened={brightened} />
+          {/* 読み上げは電球の aria-label（なるほど度: …）で足りるので、文字は見た目だけ */}
+          <span aria-hidden="true">{MASTERY_LABELS[masteryOf(streak)]}</span>
+        </span>
         <Stars value={star} onChange={saveStar} size={16} />
         {fixNote !== null && (
           <span className="fix-badge" title={fixNote}>
@@ -90,7 +113,7 @@ export function QuizCard({
       {open ? (
         <QuizRunner
           quizId={quiz.id}
-          onAnswered={onAnswered}
+          onAnswered={handleAnswered}
           onFixNoteChange={setFixNote}
           onClose={() => {
             setOpen(false);

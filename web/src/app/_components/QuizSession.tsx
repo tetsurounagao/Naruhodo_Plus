@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { apiGet, apiPost } from "../../lib/client";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
+import { MASTERY_LABELS, masteryOf, nextStreak } from "../../lib/mastery";
 import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
-import { ChoiceContent } from "./ChoiceContent";
-import { AnswerButtons } from "./AnswerButtons";
-import { ResultLabel } from "./ResultLabel";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
+import { ChoiceTiles, fitsTwoColumns } from "./ChoiceTiles";
+import { AnswerBar } from "./AnswerBar";
+import { PlaySettings } from "./PlaySettings";
+import { Bulb } from "./Bulb";
+import { bulbChangeOf } from "./BulbChange";
+import { CloseIcon, FlameIcon } from "./PlayIcons";
 import { Confetti } from "./Confetti";
 import { SessionSummary } from "./SessionSummary";
 import { feedback, useSoundOn } from "../../lib/feedback";
@@ -51,7 +56,7 @@ function isTyping(target: EventTarget | null): boolean {
 
 /**
  * 連続出題。渡されたクイズを 1 問ずつ出し、最後に結果のまとめを出す。
- * 数字キーで選択、Enter で回答・次へ。
+ * 数字キーで選択、Enter で回答・次へ。回答ボタンと結果は画面下の固定バー（AnswerBar）に出す。
  */
 export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   // 開くたびに選択肢の並びを変える（位置で正解を覚えないように）
@@ -88,6 +93,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const quiz = quizzes[index] as QuizPublic | undefined;
   const done = index >= quizzes.length;
   const hideChoices = recallFirst && !revealed && !result;
+  const last = answered[answered.length - 1];
 
   const submit = useCallback(async (confidence: Confidence) => {
     if (!quiz || !selected || result || busy) return;
@@ -161,7 +167,11 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   }
 
   function retryWrong() {
-    const retry = answered.filter(needsRetry).map((a) => a.quiz);
+    // 電球の段階が今回の解答のぶん変わっているので、連続正解回数を更新してから出し直す
+    const retry = answered.filter(needsRetry).map((a) => ({
+      ...a.quiz,
+      correct_streak: nextStreak(a.quiz.correct_streak, a.result.is_correct, a.confidence),
+    }));
     setQuizzes(prepare(retry));
     setAnswered([]);
     setScore(0);
@@ -190,14 +200,33 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
 
   if (!quiz) return null;
 
+  // 問題カードの電球: 解答後は新しい段階を出し、明るくなったら「明るくなった」を添える
+  const change =
+    result && last ? bulbChangeOf(quiz.correct_streak, result.is_correct, last.confidence) : null;
+  const level = change ? change.to : masteryOf(quiz.correct_streak);
+  const brightened = !!change && change.to > change.from;
+
+  const hasRationales = !!result && quiz.choices.some((c) => result.rationales?.[c.id]);
+  const hasSource = !!result?.source_knowledge;
+  const hasRows = hasRationales || hasSource;
+
   return (
-    <div className="card session">
+    <div className="play">
       {burst > 0 && <Confetti key={burst} count={40} />}
-      <div className="session-hud">
-        <span className="hud-count">
-          {index + 1} / {quizzes.length}
-        </span>
-        <span className="session-segments" aria-hidden>
+
+      <div className="play-topbar">
+        <Link href="/" className="play-icon-link" aria-label="やめる">
+          <CloseIcon />
+        </Link>
+        <div
+          className="play-progress"
+          role="progressbar"
+          aria-label="進み具合"
+          aria-valuemin={0}
+          aria-valuemax={quizzes.length}
+          aria-valuenow={answered.length}
+          aria-valuetext={`${quizzes.length} 問中 ${index + 1} 問目`}
+        >
           {quizzes.map((q, i) => (
             <span
               key={q.id + i}
@@ -210,86 +239,105 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
               }
             />
           ))}
-        </span>
-        <span className="hud-score" key={score}>
+        </div>
+        {combo >= 2 ? (
+          <div className="play-combo-slot">
+            <span key={comboPulse} className={`combo-badge play-combo tier-${comboTier(combo)}`}>
+              <FlameIcon size={comboTier(combo) >= 2 ? 18 : 16} />
+              {combo} コンボ
+            </span>
+          </div>
+        ) : comboBroken && result ? (
+          <div className="play-combo-slot">
+            <span className="combo-broken">コンボが途切れた…</span>
+          </div>
+        ) : null}
+        <span className="play-score" key={score}>
           {score} pt
         </span>
+        <PlaySettings />
       </div>
-      {combo >= 2 ? (
-        <div key={comboPulse} className={`combo-badge tier-${comboTier(combo)}`}>
-          {comboTier(combo) >= 3 ? "⚡" : "🔥"} {combo} COMBO
-        </div>
-      ) : comboBroken && result ? (
-        <div className="combo-broken">コンボが途切れた…</div>
-      ) : null}
 
-      <div className="md-q">
-        <ExplainPopover>
-          <Markdown>{quiz.question}</Markdown>
-        </ExplainPopover>
-      </div>
-      <div>
-        {quiz.tags.map((t) => (
-          <span className="tag" key={t}>
-            {t}
+      <section className="card play-question" aria-label={`${index + 1} 問目`}>
+        <div className="play-question-meta">
+          <Bulb level={level} size={26} brightened={brightened} />
+          {brightened ? (
+            <span className="mastery-chip up">明るくなった</span>
+          ) : (
+            <span className="mastery-label" aria-hidden="true">
+              {MASTERY_LABELS[level]}
+            </span>
+          )}
+          <span className="play-question-tags">
+            {quiz.tags.map((t) => (
+              <span className="tag" key={t}>
+                {t}
+              </span>
+            ))}
           </span>
-        ))}
-      </div>
+        </div>
+        <div className="md-q">
+          <ExplainPopover>
+            <Markdown>{quiz.question}</Markdown>
+          </ExplainPopover>
+        </div>
+      </section>
 
       {hideChoices ? (
         <div className="recall-prompt">
           <p className="muted">まず自分で答えを考えてから、選択肢を表示してください。</p>
-          <button className="primary" onClick={() => setRevealed(true)}>
-            選択肢を表示 <span className="kbd">Enter</span>
-          </button>
         </div>
       ) : (
-        <ul className="choices">
-          {quiz.choices.map((c, i) => {
-            let cls = "";
-            if (result) {
-              if (c.id === result.correct_answer) cls = "correct";
-              else if (c.id === selected) cls = "wrong";
-            } else if (c.id === selected) {
-              cls = "selected";
-            }
-            return (
-              <li key={c.id}>
-                <button className={cls} disabled={!!result} onClick={() => setSelected(c.id)}>
-                  <span className="choice-key">{i + 1}</span>
-                  <ChoiceContent choice={c} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <ChoiceTiles
+          choices={quiz.choices}
+          selected={selected}
+          result={result}
+          onSelect={setSelected}
+          twoColumns={fitsTwoColumns(quiz.choices)}
+        />
       )}
 
-      {error && <p className="error">{error}</p>}
-
-      {hideChoices ? null : !result ? (
-        <AnswerButtons disabled={!selected || busy} onSubmit={submit} showKeys />
-      ) : (
-        <>
-          <ResultLabel
-            isCorrect={result.is_correct}
-            confidence={answered[answered.length - 1]?.confidence ?? "sure"}
-            points={answered[answered.length - 1]?.points}
-          />
+      {result && (
+        <div className="answer-after">
           <PickedRationale choices={quiz.choices} selected={selected} result={result} />
-          {result.explanation && (
-            <ExplainPopover showInput onAddToNote={appendToNote}>
-              <Markdown>{result.explanation}</Markdown>
-            </ExplainPopover>
-          )}
-          <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
-          <SourceKnowledgeView knowledge={result.source_knowledge} />
-          <p style={{ marginTop: 12 }}>
-            <button className="primary" onClick={next}>
-              {index + 1 < quizzes.length ? "次へ" : "結果を見る"} <span className="kbd">Enter</span>
-            </button>
-          </p>
-        </>
+          <div className={`answer-after-grid${result.explanation && hasRows ? " split" : ""}`}>
+            {result.explanation && (
+              <div className="sticky answer-note">
+                <p className="answer-note-head">解説</p>
+                <ExplainPopover showInput onAddToNote={appendToNote}>
+                  <Markdown>{result.explanation}</Markdown>
+                </ExplainPopover>
+              </div>
+            )}
+            {hasRows && (
+              <div className="answer-rows">
+                <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
+                <SourceKnowledgeView knowledge={result.source_knowledge} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {result && last ? (
+        <AnswerBar
+          mode="result"
+          result={result}
+          confidence={last.confidence}
+          points={last.points}
+          prevStreak={quiz.correct_streak}
+          nextLabel={index + 1 < quizzes.length ? "次へ" : "結果を見る"}
+          onNext={next}
+        />
+      ) : hideChoices ? (
+        <AnswerBar mode="reveal" onReveal={() => setRevealed(true)} error={error} />
+      ) : (
+        <AnswerBar
+          mode="answer"
+          disabled={!selected || busy}
+          onSubmit={(c) => void submit(c)}
+          error={error}
+        />
       )}
     </div>
   );
