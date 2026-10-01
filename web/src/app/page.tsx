@@ -44,6 +44,23 @@ export default function HomePage() {
           まだクイズ化されていない学び: <strong>{data?.unquizzed ?? "…"}</strong> 件（
           <Link href="/knowledge">一覧</Link>）
         </p>
+        {data && (data.dueCount > 0 || data.unanswered > 0) && (
+          <div className="button-row">
+            {data.dueCount > 0 && (
+              <Link className="button-link" href="/play?mode=review">
+                今日の復習を始める（{Math.min(data.dueCount, 10)}問）
+              </Link>
+            )}
+            {data.unanswered > 0 && (
+              <Link
+                className={data.dueCount > 0 ? "button-link secondary" : "button-link"}
+                href="/play?mode=unanswered"
+              >
+                未解答を解く（{Math.min(data.unanswered, 10)}問）
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       <h2>最近の活動</h2>
@@ -97,7 +114,8 @@ export default function HomePage() {
             <div key={s.tag_id}>
               <Tag name={s.tag_name} weak />{" "}
               {Math.round((s.accuracy ?? 0) * 100)}%（{s.correct_attempts}/
-              {s.total_attempts}）
+              {s.total_attempts}）{" "}
+              <Link href={`/play?tag=${encodeURIComponent(s.tag_name)}`}>このタグを解く →</Link>
             </div>
           ))}
         </div>
