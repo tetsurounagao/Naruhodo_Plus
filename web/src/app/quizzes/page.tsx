@@ -13,6 +13,7 @@ const DEFAULT_FILTERS: FilterState = {
   sort: "created_desc",
   minStar: 0,
   hiddenOnly: false,
+  fixOnly: false,
 };
 
 export default function QuizzesPage() {
@@ -30,6 +31,7 @@ export default function QuizzesPage() {
       minStar: String(filters.minStar),
       hidden: filters.hiddenOnly ? "only" : "exclude",
     });
+    if (filters.fixOnly) p.set("fix", "only");
     apiGet<{ quizzes: QuizPublic[] }>(`/api/quizzes?${p}`)
       .then((r) => setQuizzes(r.quizzes))
       .catch((e: Error) => setError(e.message));

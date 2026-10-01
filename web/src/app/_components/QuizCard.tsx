@@ -39,6 +39,7 @@ export function QuizCard({
   const [open, setOpen] = useState(false);
   const [star, setStar] = useState(quiz.star);
   const [tags, setTags] = useState<string[]>(quiz.tags);
+  const [fixNote, setFixNote] = useState<string | null>(quiz.fix_note);
 
   async function saveStar(v: number) {
     const prev = star;
@@ -65,6 +66,11 @@ export function QuizCard({
 
       <div className="quizmeta">
         <Stars value={star} onChange={saveStar} size={16} />
+        {fixNote !== null && (
+          <span className="fix-badge" title={fixNote}>
+            要修正
+          </span>
+        )}
         <span>解答 {quiz.attempt_count} 回</span>
         {quiz.last_correct !== null && (
           <span>前回 {quiz.last_correct ? "正解" : "不正解"}</span>
@@ -80,6 +86,7 @@ export function QuizCard({
         <QuizRunner
           quizId={quiz.id}
           onAnswered={onAnswered}
+          onFixNoteChange={setFixNote}
           onClose={() => {
             setOpen(false);
             onClosed?.(quiz.id);
@@ -104,6 +111,8 @@ export function QuizCard({
             onTagsChange={setTags}
             initialHidden={quiz.hidden}
             onHiddenChange={() => onChanged?.(quiz.id)}
+            initialFixNote={fixNote}
+            onFixNoteChange={setFixNote}
           />
         </details>
       )}

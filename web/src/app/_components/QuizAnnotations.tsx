@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
-import type { QuizLink } from "../../lib/types";
+import type { QuizFixSource, QuizLink } from "../../lib/types";
+import { fixQuizPrompt } from "../../lib/quiz-prompts";
 import { TagEditor } from "./TagEditor";
+import { CopyPromptButton } from "./CopyPromptButton";
 
 /**
- * クイズの自由記入メモ / タグ / 参考リンクの編集。
+ * クイズの自由記入メモ / タグ / 参考リンク / 「問題がおかしい」フラグの編集。
  * star は QuizCard 側で常時編集できるのでここには置かない。
  * 回答結果ビューと /search 結果の展開部で共用する。
  */
@@ -18,6 +20,8 @@ export function QuizAnnotations({
   onTagsChange,
   initialHidden = false,
   onHiddenChange,
+  initialFixNote = null,
+  onFixNoteChange,
 }: {
   quizId: string;
   initialNote: string | null;
@@ -26,11 +30,16 @@ export function QuizAnnotations({
   onTagsChange?: (tags: string[]) => void;
   initialHidden?: boolean;
   onHiddenChange?: (hidden: boolean) => void;
+  initialFixNote?: string | null;
+  onFixNoteChange?: (fixNote: string | null) => void;
 }) {
   const [note, setNote] = useState(initialNote ?? "");
   const [links, setLinks] = useState<QuizLink[]>(initialLinks ?? []);
   const [url, setUrl] = useState("");
   const [hidden, setHidden] = useState(initialHidden);
+  const [fixNote, setFixNote] = useState<string | null>(initialFixNote);
+  // null = 入力欄を閉じている。文字列 = 「問題がおかしい」の理由を入力中
+  const [fixDraft, setFixDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const savedNote = useRef(initialNote ?? "");
@@ -54,6 +63,34 @@ export function QuizAnnotations({
       setHidden(!next);
       setErr((e as Error).message);
     }
+  }
+
+  /** fix_note を保存（文字列）または解除（null）する。 */
+  async function saveFixNote(next: string | null) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await apiPost<{ fix_note: string | null }>(
+        `/api/quizzes/${quizId}`,
+        { fix_note: next },
+        "PATCH",
+      );
+      setFixNote(r.fix_note);
+      setFixDraft(null);
+      onFixNoteChange?.(r.fix_note);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** 修正依頼プロンプト。正解・解説を含むので押下時にだけ専用 API から取る。 */
+  async function buildFixPrompt(): Promise<string> {
+    const r = await apiGet<{ quiz: QuizFixSource }>(
+      `/api/quizzes/${quizId}/fix-request`,
+    );
+    return fixQuizPrompt(r.quiz);
   }
 
   useEffect(() => {
@@ -164,6 +201,50 @@ export function QuizAnnotations({
           ＋
         </button>
       </div>
+
+      <h4 style={{ marginTop: 12 }}>問題の不備</h4>
+      {fixNote !== null ? (
+        <div className="fixnote">
+          <p className="fixnote-body">
+            <span className="fix-badge">要修正</span> {fixNote}
+          </p>
+          <div className="fixnote-actions">
+            <CopyPromptButton text={buildFixPrompt} label="修正を依頼（プロンプトをコピー）" />
+            <button type="button" onClick={() => saveFixNote(null)} disabled={busy}>
+              解除
+            </button>
+          </div>
+          <p className="hint">
+            AI に貼り付けると、直した問題が新しく保存され、この問題は自動で非表示になります。
+          </p>
+        </div>
+      ) : fixDraft !== null ? (
+        <div className="fixnote">
+          <textarea
+            value={fixDraft}
+            placeholder="どこがおかしいか（正解が違う・選択肢が曖昧 など）"
+            onChange={(e) => setFixDraft(e.target.value)}
+            autoFocus
+          />
+          <div className="fixnote-actions">
+            <button
+              type="button"
+              className="primary"
+              onClick={() => saveFixNote(fixDraft)}
+              disabled={busy}
+            >
+              保存
+            </button>
+            <button type="button" onClick={() => setFixDraft(null)} disabled={busy}>
+              キャンセル
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="flag-btn" onClick={() => setFixDraft("")}>
+          問題がおかしい
+        </button>
+      )}
 
       <h4 style={{ marginTop: 12 }}>表示</h4>
       <button

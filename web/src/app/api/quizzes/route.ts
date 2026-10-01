@@ -50,6 +50,7 @@ export const GET = handle(async (req) => {
     sort,
     minStar,
     hidden,
+    fixOnly: p.get("fix") === "only",
     unansweredOnly: p.get("unanswered") === "1",
     limit: p.get("limit") ? Number(p.get("limit")) : undefined,
   });

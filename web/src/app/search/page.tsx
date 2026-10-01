@@ -13,6 +13,7 @@ const DEFAULT_FILTERS: FilterState = {
   sort: "created_desc",
   minStar: 0,
   hiddenOnly: false,
+  fixOnly: false,
 };
 
 function SearchInner() {
@@ -58,6 +59,7 @@ function SearchInner() {
       minStar: String(filters.minStar),
       hidden: filters.hiddenOnly ? "only" : "exclude",
     });
+    if (filters.fixOnly) p.set("fix", "only");
     if (qv) p.set("q", qv);
     if (tagList.length) p.set("tags", tagList.join(","));
     if (includeNote) p.set("note", "1");

@@ -30,11 +30,28 @@ export interface QuizPublic {
   star: number;
   note: string | null;
   hidden: boolean;
+  /** 「問題がおかしい」の指摘。null = 問題なし、文字列 = 要修正 */
+  fix_note: string | null;
   /** getQuizForAnswering / search の詳細取得時のみ含む */
   links?: QuizLink[];
 }
 
 export type HiddenFilter = "exclude" | "only" | "all";
+
+/**
+ * 修正依頼プロンプト用の問題全体（正解・解説を含む）。
+ * 要修正（fix_note あり）の問題に限って、依頼ボタン押下時にだけ取得する。
+ */
+export interface QuizFixSource {
+  id: string;
+  question: string;
+  choices: QuizChoice[];
+  correct_answer: string;
+  explanation: string | null;
+  fix_note: string;
+  tags: string[];
+  source_knowledge_id: string | null;
+}
 
 /** クイズの元になった学び。解答後にだけ返す（答えのネタバレになるため）。 */
 export interface SourceKnowledge {

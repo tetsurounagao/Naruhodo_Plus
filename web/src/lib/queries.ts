@@ -17,6 +17,7 @@ import type {
   SourceKnowledge,
   TagInfo,
   TagStat,
+  QuizFixSource,
 } from "./types";
 
 function must<T>(res: { data: T | null; error: { message: string } | null }, ctx: string): T {
@@ -60,7 +61,7 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
 }
 
 const QUIZ_SELECT =
-  "id, question, choices, created_by, created_at, star, note, hidden, last_answered_at, quiz_tags(tags(name))";
+  "id, question, choices, created_by, created_at, star, note, hidden, fix_note, last_answered_at, quiz_tags(tags(name))";
 
 /** hidden フィルタを Supabase クエリに適用する。 */
 function applyHidden<T>(query: T, hidden: HiddenFilter): T {
@@ -91,6 +92,7 @@ function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
     star: row.star ?? 0,
     note: row.note ?? null,
     hidden: row.hidden ?? false,
+    fix_note: row.fix_note ?? null,
   };
 }
 
@@ -149,6 +151,8 @@ export interface ListQuizzesOpts {
   sort?: QuizSortKey;
   minStar?: number;
   hidden?: HiddenFilter;
+  /** true で要修正（fix_note あり）のみ */
+  fixOnly?: boolean;
   /** 後方互換: true で status="unanswered" 相当 */
   unansweredOnly?: boolean;
   limit?: number;
@@ -176,6 +180,7 @@ export async function listQuizzes(opts: ListQuizzesOpts): Promise<QuizPublic[]> 
     opts.hidden ?? "exclude",
   );
   if (idFilter) query = query.in("id", [...idFilter]);
+  if (opts.fixOnly) query = query.not("fix_note", "is", null);
   const rows = must(await query, "quizzes 取得") as any[];
 
   let items = rows.map((r) => toQuizPublic(r, aggBase));
@@ -259,11 +264,17 @@ export async function gradeAndRecord(
   };
 }
 
-/** star / note / hidden の更新。 */
+/** fix_note を保存用に正規化する。空・空白だけの指摘も「要修正」として残す。 */
+export function normalizeFixNote(v: string): string {
+  const t = v.trim();
+  return t === "" ? "（理由の記入なし）" : t;
+}
+
+/** star / note / hidden / fix_note の更新。fix_note は null で解除。 */
 export async function setQuizAnnotation(
   id: string,
-  patch: { star?: number; note?: string | null; hidden?: boolean },
-): Promise<{ star: number; note: string | null; hidden: boolean }> {
+  patch: { star?: number; note?: string | null; hidden?: boolean; fix_note?: string | null },
+): Promise<{ star: number; note: string | null; hidden: boolean; fix_note: string | null }> {
   const supabase = getSupabaseAdmin();
   const update: Record<string, unknown> = {};
   if (patch.star !== undefined) {
@@ -277,6 +288,10 @@ export async function setQuizAnnotation(
   if (patch.hidden !== undefined) {
     update.hidden = !!patch.hidden;
   }
+  if (patch.fix_note !== undefined) {
+    update.fix_note =
+      patch.fix_note === null ? null : normalizeFixNote(String(patch.fix_note));
+  }
   if (Object.keys(update).length === 0) throw new Error("更新する項目がありません");
 
   const row = must(
@@ -284,12 +299,42 @@ export async function setQuizAnnotation(
       .from("quizzes")
       .update(update)
       .eq("id", id)
-      .select("star, note, hidden")
+      .select("star, note, hidden, fix_note")
       .maybeSingle(),
     "注釈の更新",
-  ) as { star: number; note: string | null; hidden: boolean } | null;
+  ) as { star: number; note: string | null; hidden: boolean; fix_note: string | null } | null;
   if (!row) throw new Error("quiz not found");
   return row;
+}
+
+/**
+ * 修正依頼プロンプト用に、正解・解説を含む問題全体を返す。
+ * 回答前の画面に正解が漏れないよう、要修正（fix_note あり）の問題に限る。
+ * 見つからなければ null、要修正でなければ "not flagged" を投げる。
+ */
+export async function getQuizFixSource(id: string): Promise<QuizFixSource | null> {
+  const row = must(
+    await getSupabaseAdmin()
+      .from("quizzes")
+      .select(
+        "id, question, choices, correct_answer, explanation, fix_note, source_knowledge_id, quiz_tags(tags(name))",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    "修正依頼用の取得",
+  ) as any | null;
+  if (!row) return null;
+  if (row.fix_note === null) throw new Error("not flagged");
+  return {
+    id: row.id,
+    question: row.question,
+    choices: row.choices as QuizChoice[],
+    correct_answer: row.correct_answer,
+    explanation: row.explanation ?? null,
+    fix_note: row.fix_note,
+    tags: tagsOf(row),
+    source_knowledge_id: row.source_knowledge_id ?? null,
+  };
 }
 
 /** tags テーブルに無い名前を作成し、name → id の対応表を返す。 */
@@ -602,6 +647,8 @@ export interface SearchOpts {
   includeNote?: boolean;
   includeLinkTitles?: boolean;
   hidden?: HiddenFilter;
+  /** true で要修正（fix_note あり）のみ */
+  fixOnly?: boolean;
   /** 生成日レンジ（ISO）。created_at >= from かつ < to */
   createdFrom?: string;
   createdTo?: string;
@@ -663,6 +710,7 @@ export async function searchQuizzes(opts: SearchOpts): Promise<QuizPublic[]> {
     opts.hidden ?? "exclude",
   );
   if (idFilter) query = query.in("id", [...idFilter]);
+  if (opts.fixOnly) query = query.not("fix_note", "is", null);
   const rows = must(await query, "quizzes 取得") as any[];
 
   let items = rows.map((r) => toQuizPublic(r, agg));
