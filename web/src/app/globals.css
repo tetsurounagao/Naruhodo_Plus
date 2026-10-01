@@ -777,3 +777,81 @@ ul.choices button.wrong {
   border-left: 3px solid var(--border);
   color: var(--muted);
 }
+
+/* ---------------------------------------------------------------------------
+ * 連続出題（/play）
+ * ------------------------------------------------------------------------- */
+a.button-link {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+}
+a.button-link.secondary {
+  background: var(--card);
+  color: var(--accent);
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.session-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.session-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.session-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.session ul.choices button {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.session ul.choices button > :not(.choice-key) {
+  flex: 1;
+  min-width: 0;
+}
+.choice-key {
+  flex: none;
+  width: 1.6em;
+  height: 1.6em;
+  line-height: 1.6em;
+  text-align: center;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.kbd {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.session-score {
+  font-size: 1.2rem;
+}

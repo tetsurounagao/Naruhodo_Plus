@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { apiGet } from "../../lib/client";
 import type { ReviewItem } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
@@ -47,6 +48,13 @@ export default function ReviewPage() {
       <p className="muted">
         忘却曲線ベースで、そろそろ解き直すとよい問題です（強制ではありません）。
       </p>
+      {items.length > 0 && (
+        <p>
+          <Link className="button-link" href="/play?mode=review">
+            まとめて解く（{Math.min(items.length, 10)}問ずつ）
+          </Link>
+        </p>
+      )}
 
       {groups.length === 0 ? (
         <p className="muted">いまのところ復習が推奨される問題はありません。</p>
