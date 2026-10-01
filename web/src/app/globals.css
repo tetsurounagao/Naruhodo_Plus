@@ -526,6 +526,47 @@ code.choice-code {
   cursor: default;
   opacity: 1;
 }
+.actcal-cell.static {
+  display: block;
+  cursor: default;
+}
+.actcal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.actcal-mode {
+  display: inline-flex;
+}
+.actcal-mode button {
+  padding: 2px 12px;
+  font-size: 0.82rem;
+  border-radius: 0;
+}
+.actcal-mode button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.actcal-mode button:last-child {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+.actcal-mode button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.actcal-streak {
+  font-size: 0.9rem;
+}
+.actcal-streak strong {
+  color: var(--accent);
+}
+.actcal-caption {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
 .actcal-cell.today {
   outline: 1px solid var(--text);
   outline-offset: 1px;

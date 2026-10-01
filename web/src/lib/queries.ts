@@ -622,6 +622,25 @@ export async function activityTimestamps(days = 190): Promise<string[]> {
   return rows.map((r) => r.created_at);
 }
 
+/**
+ * 稼働カレンダー・連続学習日数用: 直近 days 日の解答日時（ISO）の配列。
+ * 非表示クイズへの解答も含める。「その日に学習した」事実は後からクイズを非表示にしても
+ * 変わらないため（除外すると、非表示にしただけで過去の連続日数が途切れてしまう）。
+ */
+export async function answerTimestamps(days = 190): Promise<string[]> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const rows = must(
+    await getSupabaseAdmin()
+      .from("quiz_attempts")
+      .select("answered_at")
+      .gte("answered_at", since)
+      // 件数上限（PostgREST の max rows）に当たっても直近側が残るよう新しい順
+      .order("answered_at", { ascending: false }),
+    "解答日時の取得",
+  ) as { answered_at: string }[];
+  return rows.map((r) => r.answered_at);
+}
+
 /** キーワード + タグ + フィルタでクイズを検索する。 */
 export async function searchQuizzes(opts: SearchOpts): Promise<QuizPublic[]> {
   const supabase = getSupabaseAdmin();

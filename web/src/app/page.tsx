@@ -76,9 +76,6 @@ export default function HomePage() {
 
       <h2>最近の活動</h2>
       <div className="card">
-        <p className="muted" style={{ margin: "0 0 10px", fontSize: "0.85rem" }}>
-          クイズを生成した日（直近26週）。マスをクリックするとその日の生成分を表示。
-        </p>
         <ActivityCalendar />
       </div>
 
