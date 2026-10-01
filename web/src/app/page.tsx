@@ -7,6 +7,8 @@ import type { ReviewItem, TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
 import { Tag } from "./_components/Tag";
 import { ActivityCalendar } from "./_components/ActivityCalendar";
+import { CopyPromptButton } from "./_components/CopyPromptButton";
+import { batchQuizPrompt } from "../lib/quiz-prompts";
 
 interface HomeData {
   stats: TagStat[];
@@ -43,6 +45,15 @@ export default function HomePage() {
         <p>
           まだクイズ化されていない学び: <strong>{data?.unquizzed ?? "…"}</strong> 件（
           <Link href="/knowledge">一覧</Link>）
+          {data && data.unquizzed > 0 && (
+            <>
+              {" "}
+              <CopyPromptButton
+                text={batchQuizPrompt}
+                label="まとめてクイズ化を依頼（プロンプトをコピー）"
+              />
+            </>
+          )}
         </p>
         {data && (data.dueCount > 0 || data.unanswered > 0) && (
           <div className="button-row">

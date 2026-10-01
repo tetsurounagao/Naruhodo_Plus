@@ -6,23 +6,10 @@ import type { KnowledgeItem } from "../../lib/types";
 import { Markdown } from "../_components/Markdown";
 import { Tag } from "../_components/Tag";
 import { Pager, PAGE_SIZE } from "../_components/Pager";
+import { CopyPromptButton } from "../_components/CopyPromptButton";
+import { batchQuizPrompt, singleQuizPrompt } from "../../lib/quiz-prompts";
 
 type Mode = "unquizzed" | "all";
-
-function buildPrompt(k: KnowledgeItem): string {
-  return [
-    "次の「学び」から選択式クイズ（選択肢3〜5個・正解1つ）を1問作り、save_quiz で保存してください。",
-    "固有名詞や社内文脈は持ち込まないこと。tags は元の学びのものを引き継ぐこと。",
-    `source_knowledge_id: ${k.id}`,
-    "",
-    `Q: ${k.question}`,
-    `A: ${k.answer}`,
-    k.context ? `context: ${k.context}` : "",
-    `tags: ${k.tags.join(", ") || "(なし)"}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 /** 空白区切りの全語を含むものだけ残す（質問・回答・context・タグが対象）。 */
 function matches(k: KnowledgeItem, query: string): boolean {
@@ -38,7 +25,6 @@ export default function KnowledgePage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,20 +37,12 @@ export default function KnowledgePage() {
       .catch((e: Error) => setError(e.message));
   }, [mode]);
 
+  const unquizzedCount = (items ?? []).filter((k) => k.quiz_count === 0).length;
+
   const filtered = useMemo(
     () => (items ?? []).filter((k) => matches(k, query)),
     [items, query],
   );
-
-  async function copy(k: KnowledgeItem) {
-    try {
-      await navigator.clipboard.writeText(buildPrompt(k));
-      setCopiedId(k.id);
-      setTimeout(() => setCopiedId((id) => (id === k.id ? null : id)), 2000);
-    } catch {
-      setError("クリップボードにコピーできませんでした");
-    }
-  }
 
   async function remove(k: KnowledgeItem) {
     try {
@@ -90,6 +68,20 @@ export default function KnowledgePage() {
         出題に向かない未出題の学びは「削除」で取り除けます（元に戻せません）。
       </p>
       {error && <p className="error">{error}</p>}
+
+      {unquizzedCount > 1 && (
+        <div className="card">
+          <p>
+            未出題の学びが <strong>{unquizzedCount}</strong> 件あります。1 件ずつではなく、AI
+            にまとめて取得・クイズ化してもらうこともできます。
+          </p>
+          <CopyPromptButton
+            text={batchQuizPrompt}
+            label="まとめてクイズ化を依頼（プロンプトをコピー）"
+            primary
+          />
+        </div>
+      )}
 
       <div className="filters">
         <label>
@@ -146,9 +138,10 @@ export default function KnowledgePage() {
                 <span>{k.created_at.slice(0, 10)}</span>
                 <span>{k.quiz_count > 0 ? `クイズ ${k.quiz_count} 問` : "未出題"}</span>
               </div>
-              <button onClick={() => copy(k)}>
-                {copiedId === k.id ? "コピーしました" : "クイズ化を依頼（プロンプトをコピー）"}
-              </button>{" "}
+              <CopyPromptButton
+                text={() => singleQuizPrompt(k)}
+                label="クイズ化を依頼（プロンプトをコピー）"
+              />{" "}
               {k.quiz_count === 0 &&
                 (confirmId === k.id ? (
                   <>
