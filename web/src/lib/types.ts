@@ -36,10 +36,19 @@ export interface QuizPublic {
 
 export type HiddenFilter = "exclude" | "only" | "all";
 
+/** クイズの元になった学び。解答後にだけ返す（答えのネタバレになるため）。 */
+export interface SourceKnowledge {
+  question: string;
+  answer: string;
+  context: string | null;
+}
+
 export interface AttemptResult {
   is_correct: boolean;
   correct_answer: string;
   explanation: string | null;
+  /** 元の学び。未指定・削除済みなら null */
+  source_knowledge: SourceKnowledge | null;
 }
 
 export type QuizStatusFilter = "all" | "unanswered" | "answered";

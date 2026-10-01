@@ -13,6 +13,7 @@ import type {
   QuizStatusFilter,
   HiddenFilter,
   ReviewItem,
+  SourceKnowledge,
   TagInfo,
   TagStat,
 } from "./types";
@@ -209,11 +210,16 @@ export async function gradeAndRecord(
   const quiz = must(
     await supabase
       .from("quizzes")
-      .select("correct_answer, explanation, choices")
+      .select("correct_answer, explanation, choices, knowledge_items(question, answer, context)")
       .eq("id", quizId)
       .maybeSingle(),
     "quiz 採点用取得",
-  ) as { correct_answer: string; explanation: string | null; choices: QuizChoice[] } | null;
+  ) as {
+    correct_answer: string;
+    explanation: string | null;
+    choices: QuizChoice[];
+    knowledge_items: SourceKnowledge | null;
+  } | null;
 
   if (!quiz) throw new Error("quiz not found");
 
@@ -240,6 +246,7 @@ export async function gradeAndRecord(
     is_correct: isCorrect,
     correct_answer: quiz.correct_answer,
     explanation: quiz.explanation,
+    source_knowledge: quiz.knowledge_items ?? null,
   };
 }
 
