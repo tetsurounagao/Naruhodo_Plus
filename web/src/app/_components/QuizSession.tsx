@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { apiPost } from "../../lib/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { apiGet, apiPost } from "../../lib/client";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
@@ -12,11 +11,17 @@ import { SourceKnowledgeView } from "./SourceKnowledgeView";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
+import { Confetti } from "./Confetti";
+import { SessionSummary } from "./SessionSummary";
+import { feedback, useSoundOn } from "../../lib/feedback";
+import { comboTier, scoreTurn } from "../../lib/quiz-score";
+import { countByLocalDate, localDateKey } from "../../lib/streak";
 
-interface Answered {
+export interface Answered {
   quiz: QuizPublic;
   result: AttemptResult;
   confidence: Confidence;
+  points: number;
 }
 
 /** もう一度解くべき問題か（不正解、または あやふやで正解）。 */
@@ -24,14 +29,10 @@ function needsRetry(a: Answered): boolean {
   return !a.result.is_correct || a.confidence === "unsure";
 }
 
-/** 設問の Markdown から一覧表示用の 1 行を取り出す（コードブロックは飛ばす）。 */
-function firstLine(md: string): string {
-  const line = md
-    .replace(/```[\s\S]*?```/g, " ")
-    .split("\n")
-    .map((l) => l.trim())
-    .find(Boolean);
-  return line ?? md.slice(0, 80);
+/** 進捗バーの 1 マスの色分け。 */
+function outcomeOf(a: Answered): "ok" | "unsure" | "ng" {
+  if (!a.result.is_correct) return "ng";
+  return a.confidence === "unsure" ? "unsure" : "ok";
 }
 
 /** 入力欄にフォーカスがあるときはキーボード操作を奪わない。 */
@@ -63,6 +64,24 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const recallFirst = useRecallFirst();
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sound = useSoundOn();
+  // スコア・コンボ（ブラウザ内のみ。DB には保存しない）
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  // コンボ表示の演出を再生し直すためのキー
+  const [comboPulse, setComboPulse] = useState(0);
+  const [comboBroken, setComboBroken] = useState(false);
+  const [burst, setBurst] = useState(0);
+  const comboRef = useRef(0);
+  // 開始時点で今日すでに解いていた数（まとめ画面の「今日の分クリア！」判定用）
+  const [todayBefore, setTodayBefore] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiGet<{ timestamps: string[] }>("/api/activity?kind=answers&days=2")
+      .then((r) => setTodayBefore(countByLocalDate(r.timestamps)[localDateKey(new Date())] ?? 0))
+      .catch(() => {});
+  }, []);
 
   const quiz = quizzes[index] as QuizPublic | undefined;
   const done = index >= quizzes.length;
@@ -78,14 +97,29 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         user_answer: selected,
         confidence,
       });
+      const turn = scoreTurn(r.is_correct, confidence, comboRef.current);
+      comboRef.current = turn.combo;
       setResult(r);
-      setAnswered((prev) => [...prev, { quiz, result: r, confidence }]);
+      setAnswered((prev) => [...prev, { quiz, result: r, confidence, points: turn.points }]);
+      setScore((s) => s + turn.points);
+      setCombo(turn.combo);
+      setMaxCombo((m) => Math.max(m, turn.combo));
+      setComboBroken(turn.comboBroken);
+      if (turn.combo >= 2 && r.is_correct && confidence === "sure") setComboPulse((n) => n + 1);
+      // コンボの節目（5, 10, …）は紙吹雪と派手な音
+      const milestone = turn.combo >= 5 && turn.combo % 5 === 0 && confidence === "sure" && r.is_correct;
+      if (milestone) setBurst((n) => n + 1);
+      feedback(
+        milestone ? "combo" : !r.is_correct ? "wrong" : confidence === "unsure" ? "unsure" : "correct",
+        sound,
+        turn.combo,
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
-  }, [quiz, selected, result, busy]);
+  }, [quiz, selected, result, busy, sound]);
 
   const next = useCallback(() => {
     setSelected(null);
@@ -127,6 +161,11 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
     const retry = answered.filter(needsRetry).map((a) => a.quiz);
     setQuizzes(prepare(retry));
     setAnswered([]);
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setComboBroken(false);
+    comboRef.current = 0;
     setIndex(0);
     setSelected(null);
     setResult(null);
@@ -134,45 +173,15 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   }
 
   if (done) {
-    const correct = answered.filter((a) => a.result.is_correct).length;
-    const wrong = answered.filter((a) => !a.result.is_correct);
-    const unsure = answered.filter((a) => a.result.is_correct && a.confidence === "unsure");
-    const list = (title: string, items: Answered[]) =>
-      items.length > 0 && (
-        <>
-          <h2>{title}</h2>
-          <ul className="duelist">
-            {items.map((a) => (
-              <li key={a.quiz.id}>
-                <span className="q">{firstLine(a.quiz.question)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      );
     return (
-      <div className="card session-summary">
-        <p className="session-score">
-          {answered.length} 問中 <strong>{correct}</strong> 問正解
-          {unsure.length > 0 && <span className="muted">（うち あやふや {unsure.length} 問）</span>}
-        </p>
-        {wrong.length + unsure.length > 0 ? (
-          <>
-            {list("間違えた問題", wrong)}
-            {list("あやふやだった問題", unsure)}
-            <p style={{ marginTop: 12 }}>
-              <button className="primary" onClick={retryWrong}>
-                間違えた・あやふやだった問題をもう一度
-              </button>{" "}
-              <Link href="/">ホームへ</Link>
-            </p>
-          </>
-        ) : (
-          <p>
-            全問 自信ありで正解です。 <Link href="/">ホームへ</Link>
-          </p>
-        )}
-      </div>
+      <SessionSummary
+        answered={answered}
+        score={score}
+        maxCombo={maxCombo}
+        sound={sound}
+        todayBefore={todayBefore}
+        onRetry={answered.some(needsRetry) ? retryWrong : undefined}
+      />
     );
   }
 
@@ -180,14 +189,36 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
 
   return (
     <div className="card session">
-      <div className="session-progress">
-        <span>
+      {burst > 0 && <Confetti key={burst} count={40} />}
+      <div className="session-hud">
+        <span className="hud-count">
           {index + 1} / {quizzes.length}
         </span>
-        <span className="session-bar">
-          <span style={{ width: `${(index / quizzes.length) * 100}%` }} />
+        <span className="session-segments" aria-hidden>
+          {quizzes.map((q, i) => (
+            <span
+              key={q.id + i}
+              className={
+                i < answered.length
+                  ? `seg ${outcomeOf(answered[i])}`
+                  : i === index
+                    ? "seg current"
+                    : "seg"
+              }
+            />
+          ))}
+        </span>
+        <span className="hud-score" key={score}>
+          {score} pt
         </span>
       </div>
+      {combo >= 2 ? (
+        <div key={comboPulse} className={`combo-badge tier-${comboTier(combo)}`}>
+          {comboTier(combo) >= 3 ? "⚡" : "🔥"} {combo} COMBO
+        </div>
+      ) : comboBroken && result ? (
+        <div className="combo-broken">コンボが途切れた…</div>
+      ) : null}
 
       <div className="md-q">
         <ExplainPopover>
@@ -246,6 +277,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
           <ResultLabel
             isCorrect={result.is_correct}
             confidence={answered[answered.length - 1]?.confidence ?? "sure"}
+            points={answered[answered.length - 1]?.points}
           />
           <PickedRationale choices={quiz.choices} selected={selected} result={result} />
           {result.explanation && (

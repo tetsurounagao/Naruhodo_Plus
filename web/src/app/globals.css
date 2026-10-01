@@ -779,15 +779,7 @@ ul.choices button.wrong {
   background: #f6e4e4;
 }
 
-.result-ok {
-  color: var(--ok);
-  font-weight: 700;
-}
 
-.result-ng {
-  color: var(--danger);
-  font-weight: 700;
-}
 
 .error {
   color: var(--danger);
@@ -921,27 +913,6 @@ a.button-link.secondary {
   margin-top: 12px;
 }
 
-.session-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-.session-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
-  overflow: hidden;
-}
-.session-bar > span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s;
-}
 
 .session ul.choices button {
   display: flex;
@@ -972,9 +943,6 @@ a.button-link.secondary {
   opacity: 0.7;
 }
 
-.session-score {
-  font-size: 1.2rem;
-}
 
 /* 回答後の「元の学び」 */
 details.source-knowledge {
@@ -1087,4 +1055,344 @@ img.rationale-img {
   margin-left: 6px;
   font-weight: 400;
   font-size: 0.85rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * 解いて気持ちいい演出（#66）
+ * ------------------------------------------------------------------------- */
+:root {
+  --gold: #f2b705;
+  --flame: #f28705;
+  --unsure: #d9a400;
+}
+
+/* 選択肢: 選ぶとわずかに沈み、正解は弾み、不正解は揺れる */
+ul.choices button {
+  transition:
+    transform 0.08s,
+    border-color 0.12s,
+    background 0.12s,
+    box-shadow 0.12s;
+}
+ul.choices button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+ul.choices button:not(:disabled):active {
+  transform: scale(0.98);
+}
+ul.choices button.correct {
+  animation: pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  box-shadow: 0 0 0 3px rgba(47, 111, 79, 0.18);
+}
+ul.choices button.wrong {
+  animation: shake 0.4s;
+}
+/* 回答後も正解・自分の誤答ははっきり見せる（disabled の半透明を打ち消す） */
+ul.choices button.correct:disabled,
+ul.choices button.wrong:disabled {
+  opacity: 1;
+  color: var(--text);
+}
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+/* 結果スタンプ */
+.result-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 14px 0 10px;
+  position: relative;
+}
+.result-stamp {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 1.25rem;
+  padding: 2px 14px;
+  border: 3px solid currentColor;
+  border-radius: 10px;
+  transform: rotate(-4deg);
+  animation: stamp 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.result-stamp.ok {
+  color: var(--ok);
+  background: var(--accent-weak);
+}
+.result-stamp.unsure {
+  color: var(--unsure);
+  background: #fdf6dc;
+}
+.result-stamp.ng {
+  color: var(--danger);
+  background: #f9eaea;
+  transform: none;
+  animation: shake 0.4s;
+}
+@keyframes stamp {
+  0% { transform: scale(2.2) rotate(-12deg); opacity: 0; }
+  70% { transform: scale(0.94) rotate(-3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-4deg); }
+}
+.result-note {
+  margin-left: 0;
+}
+.points-float {
+  font-weight: 800;
+  color: var(--flame);
+  animation: float-up 0.9s ease-out;
+}
+@keyframes float-up {
+  0% { transform: translateY(12px); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* /play の HUD（進捗・スコア） */
+.play-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+}
+.play-toggles .recall-toggle {
+  margin: 0;
+}
+.sound-toggle {
+  padding: 3px 10px;
+  font-size: 0.8rem;
+}
+.sound-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.session-hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.hud-count {
+  flex: none;
+}
+.session-segments {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+.seg {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  transition: background 0.2s;
+}
+.seg.current {
+  background: var(--accent-weak);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  animation: seg-pulse 1.4s ease-in-out infinite;
+}
+.seg.ok {
+  background: var(--ok);
+  animation: pop 0.4s;
+}
+.seg.unsure {
+  background: var(--unsure);
+}
+.seg.ng {
+  background: var(--danger);
+}
+@keyframes seg-pulse {
+  50% { opacity: 0.55; }
+}
+.hud-score {
+  flex: none;
+  min-width: 4.5em;
+  text-align: right;
+  font-weight: 800;
+  color: var(--text);
+  animation: pop 0.35s;
+}
+
+/* コンボ */
+.combo-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--flame);
+  animation: combo-in 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.combo-badge.tier-2 {
+  background: linear-gradient(90deg, var(--flame), #e2557a);
+  font-size: 1rem;
+}
+.combo-badge.tier-3 {
+  background: linear-gradient(90deg, #e2557a, #4f7cf2, var(--gold));
+  background-size: 200% 100%;
+  font-size: 1.1rem;
+  animation:
+    combo-in 0.4s cubic-bezier(0.2, 1.6, 0.4, 1),
+    shimmer 1.6s linear infinite;
+}
+@keyframes combo-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+.combo-broken {
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  animation: shake 0.4s;
+}
+
+/* 紙吹雪 */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+.confetti span {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--drift), 100vh) rotate(var(--rotate)); opacity: 0; }
+}
+
+/* まとめ画面 */
+.summary-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.rank-stamp {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 4px solid currentColor;
+  font-size: 2.4rem;
+  font-weight: 900;
+  transform: rotate(-8deg);
+  animation: stamp 0.5s 0.25s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+.rank-S {
+  color: var(--gold);
+  background: #fff8dc;
+  box-shadow: 0 0 0 6px rgba(242, 183, 5, 0.15);
+}
+.rank-A {
+  color: var(--ok);
+  background: var(--accent-weak);
+}
+.rank-B {
+  color: #4f7cf2;
+  background: #e9effd;
+}
+.rank-C {
+  color: var(--muted);
+  background: var(--bg);
+}
+.summary-score {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.summary-score strong {
+  font-size: 2.2rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.summary-message {
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+.best-badge {
+  margin-left: 10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--gold);
+  vertical-align: middle;
+  animation: combo-in 0.4s 0.9s backwards;
+}
+.summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+.summary-stats > div {
+  flex: 1;
+  min-width: 7em;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+.stat-num {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.best-dot {
+  margin-left: 4px;
+  font-size: 0.65rem;
+  color: var(--gold);
+  vertical-align: super;
+}
+.streak-up {
+  border-color: var(--flame) !important;
+  background: #fff4e6;
+  animation: pop 0.5s 1s backwards;
+}
+
+/* 動きを減らす設定のときは演出を止める */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
