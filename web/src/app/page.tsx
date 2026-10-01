@@ -15,8 +15,8 @@ import { DAILY_GOAL } from "../lib/daily-goal";
 
 /** /play の 1 セッションの最大問題数（play/page.tsx の SESSION_SIZE と揃える）。 */
 const SESSION_SIZE = 10;
-/** 要復習タグの付箋を何枚まで出すか（残りは下の「タグ別の内訳と正答率」へ）。 */
-const WEAK_STICKY_MAX = 5;
+/** 要復習タグの付箋を何枚まで出すか。灯った知識のボードと高さがそろう枚数にする（残りは下の「タグ別の内訳と正答率」へ）。 */
+const WEAK_STICKY_MAX = 3;
 
 export default function HomePage() {
   const [data, setData] = useState<HomeSummary | null>(null);
