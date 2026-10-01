@@ -43,12 +43,12 @@
   --tape: rgba(236, 234, 255, 0.9);
   /* なるほど電球（0 まだ / 1 ほんのり / 2 明るい / 3 身についた） */
   --bulb-0: #c4c2d8;
-  --bulb-1-fill: #fff3c4;
-  --bulb-1: #c9a400;
-  --bulb-2-fill: #ffe27a;
-  --bulb-2: #b88a00;
-  --bulb-3-fill: #ffd43b;
-  --bulb-3: #9a7000;
+  --bulb-1-fill: #fff7d6;
+  --bulb-1: #d4b13f;
+  --bulb-2-fill: #ffd43b;
+  --bulb-2: #a87a00;
+  --bulb-3-fill: #ffa61a;
+  --bulb-3: #b45309;
   --radius: 16px;
   --radius-sm: 12px;
   --font-body: var(--font-rounded), system-ui, "Hiragino Maru Gothic ProN", sans-serif;
@@ -1747,7 +1747,18 @@ main.container h2.no-plus::before {
   fill: var(--bulb-3-fill);
 }
 .bulb-3 svg {
-  filter: drop-shadow(0 0 4px rgba(255, 200, 0, 0.75));
+  filter: drop-shadow(0 0 4px rgba(255, 166, 26, 0.8));
+}
+/* 身についた: 光の線（他の段階では出さない） */
+.bulb .bulb-rays {
+  display: none;
+  fill: none;
+  stroke: var(--bulb-3);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.bulb-3 .bulb-rays {
+  display: inline;
 }
 /* 明るくなった瞬間: ピカッ */
 .bulb-brightened svg {

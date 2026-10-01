@@ -25,6 +25,7 @@ export function Bulb({
       title={label}
     >
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+        <path className="bulb-rays" d="M12 -1.5v2M3.8 2.2l1.4 1.4M20.2 2.2l-1.4 1.4M0.5 9h2M23.5 9h-2" />
         <path className="bulb-base" d="M9.5 18.5h5M10.5 21h3" />
         <path
           className="bulb-glass"
