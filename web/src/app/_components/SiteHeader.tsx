@@ -9,7 +9,7 @@ const LINKS: [string, string][] = [
   ["/search", "検索"],
   ["/review", "復習"],
   ["/tags", "タグ"],
-  ["/knowledge", "未出題の学び"],
+  ["/knowledge", "学び"],
   ["/setup", "セットアップ"],
 ];
 

@@ -71,7 +71,7 @@ export default function QuizzesPage() {
         <p className="muted">読み込み中…</p>
       ) : quizzes.length === 0 ? (
         <p className="muted">
-          条件に合うクイズがありません。「未出題の学び」からクイズ生成を依頼してください。
+          条件に合うクイズがありません。「学び」ページからクイズ生成を依頼してください。
         </p>
       ) : (
         <>

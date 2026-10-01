@@ -479,8 +479,13 @@ export async function deleteKnowledge(id: string): Promise<void> {
   if (!row) throw new Error("knowledge not found");
 }
 
-/** クイズ未生成の学び一覧。「クイズ化を依頼」用。 */
-export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem[]> {
+/**
+ * 学び一覧（新しい順）。quiz_count は非表示を除いた紐づくクイズ数。
+ * unquizzedOnly=true で未出題（クイズ 0 件）のみ。「クイズ化を依頼」の起点。
+ */
+export async function listKnowledge(
+  opts: { unquizzedOnly?: boolean; limit?: number } = {},
+): Promise<KnowledgeItem[]> {
   const supabase = getSupabaseAdmin();
   const [quizRes, rowsRes] = await Promise.all([
     supabase.from("quizzes").select("source_knowledge_id").eq("hidden", false),
@@ -492,26 +497,33 @@ export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem
   const quizRows = must(quizRes, "quizzes 集計") as {
     source_knowledge_id: string | null;
   }[];
-  const quizzed = new Set(
-    quizRows.map((r) => r.source_knowledge_id).filter((v): v is string => Boolean(v)),
-  );
+  const quizCount = new Map<string, number>();
+  for (const r of quizRows) {
+    if (r.source_knowledge_id) {
+      quizCount.set(r.source_knowledge_id, (quizCount.get(r.source_knowledge_id) ?? 0) + 1);
+    }
+  }
   const rows = must(rowsRes, "knowledge_items 取得") as any[];
 
-  return rows
-    .filter((r) => !quizzed.has(r.id))
-    .slice(0, limit)
-    .map((row) => ({
-      id: row.id,
-      question: row.question,
-      answer: row.answer,
-      context: row.context ?? null,
-      source: row.source ?? null,
-      tags: (row.knowledge_item_tags ?? [])
-        .map((l: any) => l.tags?.name)
-        .filter((n: unknown): n is string => typeof n === "string"),
-      quiz_count: 0,
-      created_at: row.created_at,
-    }));
+  const items = rows.map((row) => ({
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    context: row.context ?? null,
+    source: row.source ?? null,
+    tags: (row.knowledge_item_tags ?? [])
+      .map((l: any) => l.tags?.name)
+      .filter((n: unknown): n is string => typeof n === "string"),
+    quiz_count: quizCount.get(row.id) ?? 0,
+    created_at: row.created_at,
+  }));
+  const filtered = opts.unquizzedOnly ? items.filter((i) => i.quiz_count === 0) : items;
+  return opts.limit ? filtered.slice(0, opts.limit) : filtered;
+}
+
+/** クイズ未生成の学び一覧。「クイズ化を依頼」用。 */
+export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem[]> {
+  return listKnowledge({ unquizzedOnly: true, limit });
 }
 
 export async function listTagStats(): Promise<TagStat[]> {
