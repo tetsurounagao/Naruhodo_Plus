@@ -6,8 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { apiGet } from "../../lib/client";
 import type { QuizPublic, ReviewItem } from "../../lib/types";
 import { QuizSession } from "../_components/QuizSession";
-import { RecallToggle } from "../_components/RecallToggle";
-import { SoundToggle } from "../_components/SoundToggle";
 
 /** 1 セッションで出す最大問題数。 */
 const SESSION_SIZE = 10;
@@ -55,9 +53,12 @@ function Play() {
       .catch((e: Error) => setError(e.message));
   }, [mode, tag]);
 
+  const playing = quizzes !== null && quizzes.length > 0;
+
   return (
     <>
-      <h1>{titleOf(mode, tag)}</h1>
+      {/* 解いている間は上部バーをすっきりさせるため、見出しは読み上げ用にだけ残す */}
+      <h1 className={playing ? "play-visually-hidden" : undefined}>{titleOf(mode, tag)}</h1>
       {error && <p className="error">{error}</p>}
       {quizzes === null ? (
         !error && <p className="muted">読み込み中…</p>
@@ -66,16 +67,8 @@ function Play() {
           出題できる問題がありません。<Link href="/">ホームへ</Link>
         </p>
       ) : (
-        <>
-          <p className="muted" style={{ fontSize: "0.85rem" }}>
-            数字キーで選択、Enter（自信あり）/ Shift+Enter（あやふや）で回答、Enter で次へ進めます。
-          </p>
-          <div className="play-toggles">
-            <RecallToggle />
-            <SoundToggle />
-          </div>
-          <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} />
-        </>
+        // 選択肢を隠す・効果音の切り替えとキー操作の説明は、上部バーの設定ボタンにまとめた
+        <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} />
       )}
     </>
   );

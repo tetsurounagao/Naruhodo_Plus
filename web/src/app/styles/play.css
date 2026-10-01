@@ -1,3 +1,926 @@
 /* 解答 UI（/play・QuizRunner・QuizSession・SessionSummary・結果バー） のスタイル。
    並列作業でのコンフリクトを避けるため、画面ごとにファイルを分けている（layout.tsx で読み込む）。
    色は globals.css の変数だけを使う。 */
+
+/* ---------------------------------------------------------------------------
+ * 共通
+ * globals.css の既存ルールを上書きするときは、読み込み順に頼らず詳細度を上げて書く。
+ * ------------------------------------------------------------------------- */
+
+/* 見た目からは隠し、読み上げにだけ残す */
+.play-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* 炎のアイコン（コンボ・連続日数） */
+.flame-icon {
+  display: block;
+  flex: none;
+}
+.flame-icon path {
+  fill: var(--unsure-weak);
+  stroke: var(--card);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+/* ---------------------------------------------------------------------------
+ * /play（連続出題）
+ * ------------------------------------------------------------------------- */
+.play {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.play > .card,
+.play > .recall-prompt {
+  margin: 0;
+}
+
+/* 上部バー: やめる / 進捗 / コンボ / スコア / 設定 */
+.play-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.play-icon-link,
+.play-topbar .play-icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+.play-icon-link:hover {
+  color: var(--text);
+  background: var(--accent-weak);
+}
+.play-topbar .play-icon-button {
+  border: 2px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 3px 0 var(--border);
+}
+.play-topbar .play-icon-button[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-weak);
+}
+
+/* 1 問 1 マスの進捗（globals.css の .seg の色をそのまま使い、太くする） */
+.play-progress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 5px;
+}
+.play-progress .seg {
+  height: 14px;
+  border-radius: 7px;
+}
+.play-progress .seg.current {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* コンボ（2 以上のとき） */
+.play-combo-slot {
+  flex: none;
+  display: flex;
+}
+.play-topbar .combo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 5px 12px;
+  font-size: 0.875rem;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--card);
+  box-shadow: 0 3px 0 var(--flame-strong);
+}
+.play-topbar .combo-badge.tier-2 {
+  font-size: 0.9rem;
+}
+.play-topbar .combo-badge.tier-3 {
+  font-size: 0.95rem;
+}
+.play-topbar .combo-broken {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.play-score {
+  flex: none;
+  min-width: 3.5em;
+  text-align: right;
+  font-weight: 800;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  animation: pop 0.35s;
+}
+
+/* 設定ボタンのポップオーバー */
+.play-settings {
+  position: relative;
+  flex: none;
+}
+.play-settings-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 45;
+  width: min(300px, calc(100vw - 32px));
+  padding: 14px 16px;
+  background: var(--card);
+  border: 3px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 6px 0 var(--border),
+    0 14px 28px color-mix(in srgb, var(--accent-strong) 12%, transparent);
+}
+.play-settings-title {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.play-settings-title:not(:first-child) {
+  margin-top: 14px;
+}
+.play-settings-pop .recall-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.play-settings-pop .recall-toggle input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.play-keys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.play-keys li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.play-keys li > span {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 700;
+}
+.play-keys kbd {
+  padding: 0 6px;
+  border: 2px solid var(--border);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* 問題カード: 左上に電球と段階名、右にタグ */
+.play-question-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.mastery-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.mastery-chip {
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.mastery-chip.up {
+  color: var(--bulb-3);
+  background: var(--unsure-weak);
+}
+.play-question-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: auto;
+}
+.play-question-tags .tag {
+  margin: 0;
+  font-size: 0.75rem;
+  cursor: default;
+}
+.play-question .md-q .md > p {
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+/* 選択肢を隠すモード（/play では表示ボタンは回答バーに出す） */
+.play > .recall-prompt {
+  padding: 28px 16px;
+  background: var(--card);
+  border: 3px dashed var(--border);
+  border-radius: var(--radius);
+}
+.play > .recall-prompt p {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * 選択肢のタイル（/play と 一覧から解く で共通）
+ * ------------------------------------------------------------------------- */
+ul.choices.choice-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+}
+.play > ul.choices.choice-tiles {
+  margin: 0;
+}
+ul.choices.choice-tiles li {
+  margin: 0;
+}
+ul.choices.choice-tiles button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--card);
+  border: 3px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 0 var(--border);
+}
+ul.choices.choice-tiles button > :not(.choice-key) {
+  flex: 1;
+  min-width: 0;
+}
+ul.choices.choice-tiles button:not(:disabled):hover {
+  background: var(--card);
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 0 var(--border-strong);
+  transform: translateY(-1px);
+}
+ul.choices.choice-tiles button:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--border-strong);
+}
+/* 選択中 = 紫 */
+ul.choices.choice-tiles button.selected,
+ul.choices.choice-tiles button.selected:not(:disabled):hover {
+  font-weight: 800;
+  background: var(--accent-weak);
+  border-color: var(--accent);
+  box-shadow: 0 4px 0 var(--accent-strong);
+}
+ul.choices.choice-tiles button.selected:not(:disabled):active {
+  box-shadow: 0 1px 0 var(--accent-strong);
+}
+/* 正解 = 緑、自分の誤答 = 赤（#66 の pop / shake は globals.css の animation がそのまま効く） */
+ul.choices.choice-tiles button.correct,
+ul.choices.choice-tiles button.correct:disabled {
+  opacity: 1;
+  font-weight: 800;
+  color: var(--ok-strong);
+  background: var(--ok-weak);
+  border-color: var(--ok);
+  box-shadow: 0 4px 0 var(--ok);
+}
+ul.choices.choice-tiles button.wrong,
+ul.choices.choice-tiles button.wrong:disabled {
+  opacity: 1;
+  font-weight: 800;
+  color: var(--danger-strong);
+  background: var(--danger-weak);
+  border-color: var(--danger);
+  box-shadow: 0 4px 0 var(--danger);
+}
+/* 解答後、関係のない選択肢は控えめに */
+ul.choices.choice-tiles button:disabled:not(.correct):not(.wrong) {
+  opacity: 0.55;
+}
+
+/* 番号キーのバッジ */
+.choice-tiles .choice-key {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.choice-tiles button.selected .choice-key {
+  color: var(--card);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.choice-tiles button.correct .choice-key {
+  color: var(--card);
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.choice-tiles button.wrong .choice-key {
+  color: var(--card);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* 短い文字だけの選択肢は PC で 2 列 */
+@media (min-width: 721px) {
+  ul.choices.choice-tiles.two-col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  ul.choices.choice-tiles.two-col button {
+    height: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 回答ボタン（自信あり / あやふや）
+ * ------------------------------------------------------------------------- */
+.answer-buttons-wrap {
+  margin-top: 14px;
+}
+.answer-hint {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.answer-buttons-wrap .answer-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+.answer-buttons-wrap .answer-buttons button {
+  flex: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.answer-buttons-wrap .answer-buttons button.answer-sure {
+  flex: 3;
+}
+.answer-buttons-wrap .answer-buttons button.answer-unsure,
+.answer-buttons-wrap .answer-buttons button.answer-unsure:not(:disabled):hover {
+  color: var(--unsure-strong);
+  background: var(--unsure-weak);
+  border-color: color-mix(in srgb, var(--unsure) 55%, var(--unsure-weak));
+  box-shadow: 0 4px 0 var(--unsure);
+}
+.answer-buttons-wrap .answer-buttons button.answer-unsure:not(:disabled):hover {
+  filter: brightness(1.03);
+}
+.answer-buttons-wrap .answer-buttons button.answer-unsure:not(:disabled):active {
+  box-shadow: 0 2px 0 var(--unsure);
+}
+.answer-buttons-wrap .kbd {
+  margin-left: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * /play の回答バー（画面下に固定）
+ * ------------------------------------------------------------------------- */
+.answer-bar-spacer {
+  flex: none;
+}
+.answer-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--card);
+  border-top: 3px solid var(--border);
+  box-shadow: 0 -6px 16px color-mix(in srgb, var(--accent-strong) 6%, transparent);
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+/* main.container（最大 800px・左右 20px）と端をそろえる */
+.answer-bar-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.answer-bar .answer-buttons-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+}
+.answer-bar .answer-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.answer-bar .answer-buttons-wrap .answer-buttons {
+  flex: none;
+  width: min(460px, 64%);
+}
+.answer-bar-reveal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.answer-bar-reveal button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.answer-bar-reveal .kbd,
+.answer-bar-next .kbd {
+  margin-left: 0;
+}
+.answer-bar-error {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* 解答後: バー全体を結果表示に（正解 = 緑 / あやふや正解 = 黄 / 不正解 = 赤） */
+.answer-bar.ok {
+  background: var(--ok-weak);
+  border-top-color: color-mix(in srgb, var(--ok) 40%, var(--ok-weak));
+}
+.answer-bar.unsure {
+  background: var(--unsure-weak);
+  border-top-color: color-mix(in srgb, var(--unsure) 50%, var(--unsure-weak));
+}
+.answer-bar.ng {
+  background: var(--danger-weak);
+  border-top-color: color-mix(in srgb, var(--danger) 35%, var(--danger-weak));
+}
+.answer-bar-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "label change next";
+  align-items: center;
+  gap: 10px 18px;
+}
+.answer-bar-result .result-row {
+  grid-area: label;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+.answer-bar-result .bulb-change {
+  grid-area: change;
+}
+.answer-bar .result-stamp {
+  padding: 0 14px;
+  font-size: 1.4rem;
+  background: var(--card);
+}
+.answer-bar .result-stamp.unsure {
+  color: var(--unsure-strong);
+}
+.answer-bar .points-float {
+  font-size: 1.2rem;
+  color: var(--flame-strong);
+  white-space: nowrap;
+}
+.answer-bar .answer-bar-next {
+  grid-area: next;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.answer-bar.ok .answer-bar-next {
+  color: var(--card);
+  background: var(--ok);
+  border-color: var(--ok);
+  box-shadow: 0 5px 0 var(--ok-strong);
+}
+.answer-bar.unsure .answer-bar-next {
+  color: var(--text);
+  background: var(--unsure);
+  border-color: var(--unsure);
+  box-shadow: 0 5px 0 var(--unsure-strong);
+}
+.answer-bar.ng .answer-bar-next {
+  color: var(--card);
+  background: var(--danger);
+  border-color: var(--danger);
+  box-shadow: 0 5px 0 var(--danger-strong);
+}
+.answer-bar .answer-bar-next:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+/* 電球の変化（前 → 新）と次の復習日数 */
+.bulb-change {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.bulb-change-arrow {
+  color: var(--muted);
+}
+.bulb-change-days {
+  white-space: nowrap;
+}
+.answer-bar.ok .bulb-change {
+  color: var(--ok-strong);
+}
+.answer-bar.unsure .bulb-change {
+  color: var(--unsure-strong);
+}
+.answer-bar.ng .bulb-change {
+  color: var(--danger-strong);
+}
+
+/* ---------------------------------------------------------------------------
+ * 解答後の本文（誤答の理由・付箋の解説・折りたたみの行）
+ * ------------------------------------------------------------------------- */
+.answer-after {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.answer-after .picked-rationale {
+  margin: 0;
+}
+.answer-after-grid {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 721px) {
+  .answer-after-grid.split {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+
+div.picked-rationale {
+  border-radius: var(--radius-sm);
+}
+
+/* 解説の付箋。中の「調べる」ボタン（position: fixed）の位置がずれないよう、
+   本体は傾けず、傾いた紙は ::after で敷く（transform のある祖先は fixed の基準になってしまうため） */
+.sticky.answer-note {
+  isolation: isolate;
+  padding: 16px 18px 14px;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+.sticky.answer-note::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sticky-yellow);
+  border-radius: 2px;
+  transform: rotate(-0.6deg);
+  box-shadow: 0 6px 12px color-mix(in srgb, var(--accent-strong) 10%, transparent);
+}
+.sticky.answer-note::before {
+  z-index: 1;
+  left: 26px;
+  width: 70px;
+  margin-left: 0;
+  transform: rotate(-4deg);
+}
+.answer-note-head {
+  margin: 0 0 4px;
+  font-weight: 800;
+}
+.answer-note .md {
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+
+/* 「選択肢ごとの解説」「元の学び」を白い折りたたみの行に */
+.answer-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.answer-rows:empty {
+  display: none;
+}
+.answer-rows details.choice-rationales,
+.answer-rows details.source-knowledge {
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.answer-rows details.choice-rationales > summary,
+.answer-rows details.source-knowledge > summary {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+}
+.answer-rows details.choice-rationales[open] > summary,
+.answer-rows details.source-knowledge[open] > summary {
+  margin-bottom: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 一覧から解く（QuizCard / QuizRunner）
+ * ------------------------------------------------------------------------- */
+.quizmeta-bulb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.runner-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 14px 0 12px;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.runner-result.ok {
+  background: var(--ok-weak);
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--ok-weak));
+}
+.runner-result.unsure {
+  background: var(--unsure-weak);
+  border-color: color-mix(in srgb, var(--unsure) 50%, var(--unsure-weak));
+}
+.runner-result.ng {
+  background: var(--danger-weak);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--danger-weak));
+}
+.runner-result .result-row {
+  margin: 0;
+}
+.runner-result .result-stamp {
+  background: var(--card);
+}
+.runner-result .result-stamp.unsure {
+  color: var(--unsure-strong);
+}
+.runner-result .bulb-change {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.runner .answer-note {
+  margin: 18px 0 14px;
+}
+.runner .answer-rows {
+  margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+ * まとめ画面（SessionSummary）
+ * ------------------------------------------------------------------------- */
+.card.session-summary {
+  padding: 24px 24px 20px;
+}
+.summary-kicker {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.session-summary .rank-stamp {
+  width: 92px;
+  height: 92px;
+  font-size: 2.8rem;
+  /* 内側にもう 1 本の線を引いて、はんこらしく */
+  box-shadow:
+    inset 0 0 0 4px var(--card),
+    inset 0 0 0 6px currentColor;
+}
+.session-summary .rank-stamp.rank-S {
+  box-shadow:
+    inset 0 0 0 4px var(--card),
+    inset 0 0 0 6px currentColor,
+    0 0 0 6px color-mix(in srgb, var(--gold) 20%, transparent);
+}
+.session-summary .summary-score strong {
+  font-size: 2.6rem;
+}
+.session-summary .summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 22px 0 8px;
+}
+.session-summary .summary-stats > div {
+  min-width: 0;
+  padding: 12px 10px;
+  text-align: center;
+  background: var(--card);
+  border: 3px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 0 var(--border);
+}
+.session-summary .stat-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 1.6rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.session-summary .stat-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.session-summary .summary-stats > .stat-bulb.lit {
+  background: var(--unsure-weak);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--unsure-weak));
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--gold) 45%, var(--unsure-weak));
+}
+.session-summary .summary-stats > .streak-up {
+  box-shadow: 0 4px 0 var(--flame);
+}
+.stat-streak .flame-icon path {
+  fill: var(--flame);
+  stroke: var(--flame-strong);
+}
+.session-summary .button-row {
+  margin-top: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+ * スマホ（720px 以下）
+ * ------------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .play {
+    gap: 12px;
+  }
+  .play-topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .play-progress {
+    gap: 3px;
+  }
+  .play-progress .seg {
+    height: 12px;
+    border-radius: 6px;
+  }
+  /* コンボは上部バーの下の行に出す */
+  .play-combo-slot {
+    order: 1;
+    flex-basis: 100%;
+  }
+  .play-score {
+    min-width: 0;
+    font-size: 0.95rem;
+  }
+  .card.play-question {
+    padding: 14px 14px 16px;
+    border-radius: 18px;
+  }
+  .play-question .md-q .md > p {
+    font-size: 1rem;
+  }
+
+  ul.choices.choice-tiles {
+    gap: 8px;
+  }
+  ul.choices.choice-tiles button {
+    gap: 10px;
+    min-height: 56px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border-radius: 14px;
+  }
+  .choice-tiles .choice-key {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+  }
+
+  .answer-bar-inner {
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .answer-bar .answer-buttons-wrap,
+  .answer-bar-reveal {
+    display: block;
+  }
+  .answer-bar .answer-hint {
+    margin-bottom: 8px;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .answer-bar .answer-buttons-wrap .answer-buttons {
+    width: auto;
+  }
+  .answer-bar-reveal button {
+    width: 100%;
+  }
+  /* スマホではキーボードの表示を出さない */
+  .answer-bar .kbd {
+    display: none;
+  }
+  .answer-bar-result {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label next"
+      "change change";
+    gap: 8px 12px;
+  }
+  .answer-bar .result-stamp {
+    font-size: 1.15rem;
+  }
+  .answer-bar .points-float {
+    font-size: 1rem;
+  }
+  .answer-bar .answer-bar-next {
+    min-height: 48px;
+    padding: 0 22px;
+  }
+
+  .card.session-summary {
+    padding: 18px 16px 16px;
+  }
+  .session-summary .summary-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .session-summary .rank-stamp {
+    width: 76px;
+    height: 76px;
+    font-size: 2.3rem;
+  }
+  .session-summary .summary-score strong {
+    font-size: 2.1rem;
+  }
+}

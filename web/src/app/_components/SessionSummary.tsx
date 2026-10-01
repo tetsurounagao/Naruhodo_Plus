@@ -8,6 +8,9 @@ import { RANK_MESSAGES, rankOf } from "../../lib/quiz-score";
 import { countByLocalDate, currentStreak, localDateKey } from "../../lib/streak";
 import type { Answered } from "./QuizSession";
 import { Confetti } from "./Confetti";
+import { Bulb } from "./Bulb";
+import { bulbChangeOf } from "./BulbChange";
+import { FlameIcon } from "./PlayIcons";
 
 /** 設問の Markdown から一覧表示用の 1 行を取り出す（コードブロックは飛ばす）。 */
 function firstLine(md: string): string {
@@ -63,7 +66,18 @@ function writeBest(b: Best): void {
   }
 }
 
-/** 連続出題のまとめ。スコアのカウントアップ・ランク・自己ベスト・連続学習日数を出す。 */
+/** このセッションで なるほど電球 が明るくなった（段階が上がった）問題の数。 */
+function countBrightened(answered: Answered[]): number {
+  return answered.filter((a) => {
+    const c = bulbChangeOf(a.quiz.correct_streak, a.result.is_correct, a.confidence);
+    return c.to > c.from;
+  }).length;
+}
+
+/**
+ * 連続出題のまとめ。ランクのスタンプ・スコアのカウントアップ・統計のタイル
+ * （正解数・最大コンボ・明るくなった電球・連続学習日数）・自己ベストを出す。
+ */
 export function SessionSummary({
   answered,
   score,
@@ -86,6 +100,7 @@ export function SessionSummary({
   const wrong = answered.filter((a) => !a.result.is_correct);
   const rank = rankOf(sure, unsure.length, total);
   const shown = useCountUp(score);
+  const brightened = countBrightened(answered);
 
   const [newBest, setNewBest] = useState<{ score: boolean; combo: boolean } | null>(null);
   const [streak, setStreak] = useState<{ days: number; firstToday: boolean } | null>(null);
@@ -137,8 +152,11 @@ export function SessionSummary({
     <div className="card session-summary">
       {(rank === "S" || rank === "A") && <Confetti count={rank === "S" ? 90 : 50} />}
 
+      <p className="summary-kicker">{total} 問おつかれさま！</p>
       <div className="summary-hero">
-        <span className={`rank-stamp rank-${rank}`}>{rank}</span>
+        <span className={`rank-stamp rank-${rank}`} role="img" aria-label={`ランク ${rank}`}>
+          {rank}
+        </span>
         <div>
           <p className="summary-score">
             <strong>{shown}</strong> pt
@@ -162,9 +180,19 @@ export function SessionSummary({
           </span>
           <span className="stat-label">最大コンボ</span>
         </div>
+        <div className={brightened > 0 ? "stat-bulb lit" : "stat-bulb"}>
+          <span className="stat-num">
+            <Bulb level={brightened > 0 ? 3 : 0} size={26} brightened={brightened > 0} title="なるほど電球" />
+            {brightened}
+          </span>
+          <span className="stat-label">明るくなった電球</span>
+        </div>
         {streak && streak.days > 0 && (
-          <div className={streak.firstToday ? "streak-up" : ""}>
-            <span className="stat-num">🔥 {streak.days}</span>
+          <div className={streak.firstToday ? "stat-streak streak-up" : "stat-streak"}>
+            <span className="stat-num">
+              <FlameIcon size={24} />
+              {streak.days}
+            </span>
             <span className="stat-label">
               {streak.firstToday ? "日連続！今日の分クリア" : "日連続"}
             </span>
