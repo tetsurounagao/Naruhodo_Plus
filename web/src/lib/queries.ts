@@ -3,8 +3,11 @@ import { getSupabaseAdmin } from "./supabase/admin";
 import { weakTagThreshold } from "./env";
 import { reviewInfo } from "./review-schedule";
 import { normalizeTags } from "./normalize-tags";
+import { masteryOf, type Mastery } from "./mastery";
 import type {
   AttemptResult,
+  HomeSummary,
+  MasteryGroup,
   KnowledgeItem,
   QuizChoice,
   QuizLink,
@@ -790,31 +793,89 @@ export async function dueForReview(): Promise<ReviewItem[]> {
   return out;
 }
 
-/** ホーム画面が必要とするものを 1 回の呼び出しでまとめて返す。 */
-export async function homeSummary(): Promise<{
-  stats: TagStat[];
-  unanswered: number;
-  unquizzed: number;
-  quizTotal: number;
-  /** 復習期限が来ている問題数（一覧は /review。ホームは件数だけ使う） */
-  dueCount: number;
-}> {
+/**
+ * ホーム画面が必要とするものを 1 回の呼び出しでまとめて返す。
+ * 非表示でないクイズと解答集計は 1 回だけ取得し、未解答数・復習数・電球ボードをそこから数える
+ * （listQuizzes / dueForReview をそれぞれ呼ぶと同じ取得が 2 回ずつ走るため）。AI 呼び出しはしない。
+ */
+export async function homeSummary(): Promise<HomeSummary> {
   const supabase = getSupabaseAdmin();
-  const [stats, unansweredQuizzes, unquizzed, due, countRes] = await Promise.all([
+  const [stats, unquizzed, quizRes, agg] = await Promise.all([
     listTagStats(),
-    listQuizzes({ status: "unanswered" }),
     listUnquizzedKnowledge(),
-    dueForReview(),
-    supabase
-      .from("quizzes")
-      .select("id", { count: "exact", head: true })
-      .eq("hidden", false),
+    supabase.from("quizzes").select(QUIZ_SELECT).eq("hidden", false),
+    attemptAggByQuiz(),
   ]);
+  const quizzes = (must(quizRes, "quizzes 取得") as any[]).map((r) => toQuizPublic(r, agg));
+  const board = buildMasteryBoard(quizzes);
   return {
     stats,
-    unanswered: unansweredQuizzes.length,
+    unanswered: quizzes.filter((q) => q.attempt_count === 0).length,
     unquizzed: unquizzed.length,
-    quizTotal: countRes.count ?? 0,
-    dueCount: due.length,
+    quizTotal: quizzes.length,
+    // dueForReview と同じ判定（最終回答からの経過日数 ≥ 連続正解回数に応じた間隔）
+    dueCount: quizzes.filter((q) => reviewInfo(q.last_answered_at, q.correct_streak)?.due).length,
+    ...board,
   };
+}
+
+/** なるほど電球ボードに出すタグ行の上限。超えた分は「その他」にまとめる。 */
+const MASTERY_BOARD_MAX_TAGS = 6;
+
+/**
+ * なるほど電球ボード（ホームの「灯った知識」）を組み立てる純関数。
+ * - 1 問は 1 行にだけ入れる。複数タグなら、そのクイズのタグのうち問題数が最も多いタグ
+ *   （同数ならタグ名順で先のもの）。タグ無しは「タグなし」。
+ * - 行は問題数の多い順。上限を超えたタグは「その他」にまとめ、「その他」「タグなし」は末尾。
+ * - 行内の電球は明るい順。明るさは masteryOf(連続正解回数)。
+ */
+export function buildMasteryBoard(
+  quizzes: QuizPublic[],
+): Pick<HomeSummary, "mastery" | "masteryLit" | "masteryTotal"> {
+  const quizCountByTag = new Map<string, number>();
+  for (const q of quizzes) {
+    for (const t of q.tags) quizCountByTag.set(t, (quizCountByTag.get(t) ?? 0) + 1);
+  }
+  const countOf = (t: string) => quizCountByTag.get(t) ?? 0;
+
+  const levelsByTag = new Map<string, Mastery[]>();
+  const untagged: Mastery[] = [];
+  let lit = 0;
+  for (const q of quizzes) {
+    const level = masteryOf(q.correct_streak);
+    if (level > 0) lit += 1;
+    if (q.tags.length === 0) {
+      untagged.push(level);
+      continue;
+    }
+    const home = q.tags.reduce((best, t) =>
+      countOf(t) > countOf(best) || (countOf(t) === countOf(best) && t < best) ? t : best,
+    );
+    const list = levelsByTag.get(home) ?? [];
+    list.push(level);
+    levelsByTag.set(home, list);
+  }
+
+  const brightFirst = (levels: Mastery[]) => [...levels].sort((a, b) => b - a);
+  const tagRows: MasteryGroup[] = [...levelsByTag]
+    .map(([tag, levels]) => ({ kind: "tag" as const, label: tag, levels }))
+    .sort((a, b) => b.levels.length - a.levels.length || (a.label < b.label ? -1 : 1));
+
+  const overflow = tagRows.length > MASTERY_BOARD_MAX_TAGS;
+  const shown = overflow ? tagRows.slice(0, MASTERY_BOARD_MAX_TAGS - 1) : tagRows;
+  const rest = overflow ? tagRows.slice(MASTERY_BOARD_MAX_TAGS - 1) : [];
+
+  const mastery: MasteryGroup[] = shown.map((g) => ({ ...g, levels: brightFirst(g.levels) }));
+  if (rest.length > 0) {
+    mastery.push({
+      kind: "other",
+      label: "その他",
+      tagCount: rest.length,
+      levels: brightFirst(rest.flatMap((g) => g.levels)),
+    });
+  }
+  if (untagged.length > 0) {
+    mastery.push({ kind: "untagged", label: "タグなし", levels: brightFirst(untagged) });
+  }
+  return { mastery, masteryLit: lit, masteryTotal: quizzes.length };
 }

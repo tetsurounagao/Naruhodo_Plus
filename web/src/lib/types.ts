@@ -127,3 +127,34 @@ export interface TagStat {
   /** 閾値により要復習と判定されたか */
   weak: boolean;
 }
+
+/**
+ * ホームの「灯った知識」（なるほど電球ボード）の 1 行。
+ * 1 問は 1 行にだけ入る（そのクイズのタグのうち問題数が最も多いタグの行）。
+ */
+export interface MasteryGroup {
+  /** "tag" = 実在のタグ / "other" = 表示しきれないタグをまとめた行 / "untagged" = タグなし */
+  kind: "tag" | "other" | "untagged";
+  /** 表示名。kind が "tag" ならタグ名、それ以外は「その他」「タグなし」 */
+  label: string;
+  /** kind === "other" のとき、まとめたタグの数 */
+  tagCount?: number;
+  /** その行の問題の明るさ（明るい順）。0 まだ / 1 ほんのり / 2 明るい / 3 身についた */
+  levels: (0 | 1 | 2 | 3)[];
+}
+
+/** /api/home のレスポンス。 */
+export interface HomeSummary {
+  stats: TagStat[];
+  unanswered: number;
+  unquizzed: number;
+  quizTotal: number;
+  /** 復習期限が来ている問題数（一覧は /review。ホームは件数だけ使う） */
+  dueCount: number;
+  /** なるほど電球ボード（タグごとの行。問題数の多い順。「その他」「タグなし」は末尾） */
+  mastery: MasteryGroup[];
+  /** 点灯している（明るさ 1 以上の）問題数 */
+  masteryLit: number;
+  /** ボードに載っている問題数（非表示を除く全問題） */
+  masteryTotal: number;
+}
