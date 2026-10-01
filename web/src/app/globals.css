@@ -664,7 +664,36 @@ pre.cmd {
   margin: 4px 0 8px;
 }
 
-/* ホームの復習おすすめ（コンパクト行） */
+/* ホームの「今日やること」 */
+.today-streak {
+  margin: 0 0 10px;
+}
+.today-streak strong {
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+.today-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.today-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.today-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+/* 復習おすすめ・セッション結果のコンパクト行 */
 .duelist {
   list-style: none;
   padding: 0;
