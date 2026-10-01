@@ -1,3 +1,127 @@
-/* コード表示（Markdown のコードブロック・コードの選択肢の色分け） のスタイル。
+/* コード表示（Markdown のコードブロック・コードの選択肢の色分け）のスタイル。
    並列作業でのコンフリクトを避けるため、画面ごとにファイルを分けている（layout.tsx で読み込む）。
-   色は globals.css の変数だけを使う。 */
+   トークンの配色（GitHub Dark 系）はここで変数として持つ。それ以外の色は globals.css の変数を使う。 */
+:root {
+  --code-muted: #8b949e;
+  --code-keyword: #ff7b72;
+  --code-function: #d2a8ff;
+  --code-constant: #79c0ff;
+  --code-string: #a5d6ff;
+  --code-builtin: #ffa657;
+  --code-tag: #7ee787;
+  --code-bullet: #f2cc60;
+}
+
+/* ---- コードブロック（問題文・解説・学びの Markdown） ---- */
+.codeblock {
+  position: relative;
+  margin: 10px 0;
+}
+.md pre {
+  margin: 0;
+  border-radius: 14px;
+  background: var(--code-bg);
+  overflow-x: auto;
+}
+.md pre code {
+  display: block;
+  padding: 14px 18px;
+  font-size: 0.85rem;
+  line-height: 1.75;
+  background: transparent;
+  color: var(--code-fg);
+}
+.codeblock-lang {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--code-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---- コードの選択肢（button 内なので pre は使わず code をブロック表示） ---- */
+code.choice-code {
+  display: block;
+  white-space: pre;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+/* ---- トークンの色（highlight.js のクラス。GitHub Dark 系） ---- */
+.hljs {
+  color: var(--code-fg);
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--code-keyword);
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: var(--code-function);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-property {
+  color: var(--code-constant);
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  color: var(--code-string);
+}
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--code-builtin);
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  color: var(--code-muted);
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  color: var(--code-tag);
+}
+.hljs-subst {
+  color: var(--code-fg);
+}
+.hljs-section {
+  color: var(--code-constant);
+  font-weight: 700;
+}
+.hljs-bullet {
+  color: var(--code-bullet);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
