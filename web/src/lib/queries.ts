@@ -76,12 +76,20 @@ function tagsOf(row: any): string[] {
     .filter((n: unknown): n is string => typeof n === "string");
 }
 
+/**
+ * 解答前に返す選択肢から rationale を取り除く。
+ * 正解の選択肢の理由が見えると答えが分かってしまうため、rationale は採点後（gradeAndRecord）にだけ返す。
+ */
+function stripRationale(choices: QuizChoice[] | null | undefined): QuizChoice[] {
+  return (choices ?? []).map(({ rationale: _rationale, ...rest }) => rest);
+}
+
 function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
   const a = agg.get(row.id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
   return {
     id: row.id,
     question: row.question,
-    choices: row.choices as QuizChoice[],
+    choices: stripRationale(row.choices as QuizChoice[]),
     tags: tagsOf(row),
     created_by: row.created_by ?? null,
     created_at: row.created_at,
@@ -251,11 +259,17 @@ export async function gradeAndRecord(
     "last_answered_at 更新",
   );
 
+  const rationales: Record<string, string> = {};
+  for (const c of quiz.choices ?? []) {
+    if (typeof c.rationale === "string" && c.rationale.trim()) rationales[c.id] = c.rationale;
+  }
+
   return {
     is_correct: isCorrect,
     correct_answer: quiz.correct_answer,
     explanation: quiz.explanation,
     source_knowledge: quiz.knowledge_items ?? null,
+    rationales,
   };
 }
 

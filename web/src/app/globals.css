@@ -916,6 +916,72 @@ details.source-knowledge summary {
   font-size: 0.9rem;
 }
 
+/* 選択肢ごとの解説（回答後のみ） */
+.picked-rationale {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid var(--danger);
+  border-radius: 4px;
+  background: #f6e4e4;
+}
+.picked-rationale-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--danger);
+}
+details.choice-rationales {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+details.choice-rationales summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+details.choice-rationales ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+details.choice-rationales li {
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+}
+details.choice-rationales li:first-child {
+  border-top: none;
+}
+.choice-rationale-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  font-weight: 600;
+}
+.choice-rationale-head .badge-ok,
+.choice-rationale-head .badge-ng {
+  font-size: 0.75rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+}
+.choice-rationale-head .badge-ok {
+  background: var(--ok);
+}
+.choice-rationale-head .badge-ng {
+  background: var(--muted);
+}
+img.rationale-img {
+  max-height: 48px;
+}
+
 /* 先に答えを考えるモード */
 .recall-toggle {
   display: inline-flex;

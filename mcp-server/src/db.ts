@@ -27,6 +27,8 @@ export interface QuizChoice {
   content: string;
   /** type が "code" のときのシンタックスハイライト言語 */
   language?: string;
+  /** この選択肢がなぜ正解／不正解かの理由。解答後にだけ表示する */
+  rationale?: string;
 }
 
 export interface SaveQuizInput {

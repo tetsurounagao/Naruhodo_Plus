@@ -15,15 +15,19 @@ const DESCRIPTION = `会話で生成した選択式クイズを1問保存する�
 
 ## 作り方の指針
 - 選択式のみ。選択肢は3〜5個。正解はちょうど1つ。
-- choices は各要素 { id, type, content, language? } の配列。
+- choices は各要素 { id, type, content, language?, rationale? } の配列。
   - id: "a" "b" "c" ... のような短い識別子。
   - type: "text"（文字列）/ "code"（コード片。等幅＋シンタックスハイライト表示）/ "image"（画像URL）。
   - content: 表示内容。type が "code" ならコード文字列そのもの、"image" なら画像URL。
   - language: type が "code" のときのハイライト言語（"ts" "python" "sql" など）。任意。
+  - rationale: その選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）。
 - correct_answer: 正解の選択肢の id（content ではなく id）。
 - choices を渡す順序は気にしなくてよい。正解を先頭に置いて残りを後から書いてよい
   （並び順は保存時にサーバー側でランダムに入れ替わる。id は変わらないので correct_answer の指定はそのままでよい）。
 - explanation: なぜその答えになるかの簡潔な解説。Markdown 可。コードは \`\`\` フェンスで。
+- 各選択肢に rationale を付ける（誤答はなぜ誤りか、正解はなぜ正しいか）。
+  explanation は全体の解説、rationale は選択肢ごとの短い理由。
+  rationale は解答後にだけ表示されるので、正解が分かる書き方をしてよい。
 - source_knowledge_id: 元にした学びの id（list_knowledge の [id]）。分かる場合は必ず付ける。
 - tags: 元の学びのタグを引き継ぐ。半角英数の短い文字列。表記ゆれは自動正規化。
 
@@ -53,6 +57,10 @@ const choiceSchema = z.object({
     .string()
     .optional()
     .describe('type が "code" のときのハイライト言語（"ts" 等）。任意'),
+  rationale: z
+    .string()
+    .optional()
+    .describe("この選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）"),
 });
 
 const shape = {
@@ -135,6 +143,7 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
           type: c.type,
           content: c.content,
           ...(c.type === "code" && c.language ? { language: c.language } : {}),
+          ...(c.rationale?.trim() ? { rationale: c.rationale.trim() } : {}),
         })),
         correctAnswer: correct_answer,
         explanation,

@@ -11,6 +11,7 @@ import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
+import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
 
 /**
  * 1 問を解く UI。設問文は呼び出し側（QuizCard）が表示している前提でここでは繰り返さない。
@@ -122,11 +123,13 @@ export function QuizRunner({
       {result && (
         <>
           <ResultLabel isCorrect={result.is_correct} confidence={confidence} />
+          <PickedRationale choices={quiz.choices} selected={selected} result={result} />
           {result.explanation && (
             <ExplainPopover showInput onAddToNote={appendToNote}>
               <Markdown>{result.explanation}</Markdown>
             </ExplainPopover>
           )}
+          <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
           <SourceKnowledgeView knowledge={result.source_knowledge} />
         </>
       )}

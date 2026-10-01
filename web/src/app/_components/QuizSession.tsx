@@ -11,6 +11,7 @@ import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
+import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
 
 interface Answered {
   quiz: QuizPublic;
@@ -246,11 +247,13 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
             isCorrect={result.is_correct}
             confidence={answered[answered.length - 1]?.confidence ?? "sure"}
           />
+          <PickedRationale choices={quiz.choices} selected={selected} result={result} />
           {result.explanation && (
             <ExplainPopover showInput onAddToNote={appendToNote}>
               <Markdown>{result.explanation}</Markdown>
             </ExplainPopover>
           )}
+          <ChoiceRationales choices={quiz.choices} selected={selected} result={result} />
           <SourceKnowledgeView knowledge={result.source_knowledge} />
           <p style={{ marginTop: 12 }}>
             <button className="primary" onClick={next}>
