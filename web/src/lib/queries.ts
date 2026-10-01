@@ -61,7 +61,7 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
 }
 
 const QUIZ_SELECT =
-  "id, question, choices, created_by, created_at, star, note, hidden, fix_note, last_answered_at, quiz_tags(tags(name))";
+  "id, question, choices, created_by, created_at, star, note, hidden, fix_note, source_knowledge_id, last_answered_at, quiz_tags(tags(name))";
 
 /** hidden フィルタを Supabase クエリに適用する。 */
 function applyHidden<T>(query: T, hidden: HiddenFilter): T {
@@ -93,6 +93,7 @@ function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
     note: row.note ?? null,
     hidden: row.hidden ?? false,
     fix_note: row.fix_note ?? null,
+    source_knowledge_id: row.source_knowledge_id ?? null,
   };
 }
 

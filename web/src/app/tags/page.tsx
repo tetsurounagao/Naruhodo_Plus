@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
-import type { TagInfo } from "../../lib/types";
+import type { QuizPublic, TagInfo } from "../../lib/types";
 import { updateTagColorLocal } from "../../lib/tag-colors";
+import { tagQuizPrompt } from "../../lib/quiz-prompts";
 import { textOn } from "../_components/Tag";
+import { CopyPromptButton } from "../_components/CopyPromptButton";
 
 const PRESETS = [
   "#2a78d6",
@@ -28,6 +30,16 @@ export default function TagsPage() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
+  /** 追加問題の依頼プロンプト。既存の問題文は押下時に取得して同梱する。 */
+  async function buildTagPrompt(name: string): Promise<string> {
+    const p = new URLSearchParams({ tags: name, status: "all", limit: "500" });
+    const r = await apiGet<{ quizzes: QuizPublic[] }>(`/api/quizzes?${p}`);
+    return tagQuizPrompt(
+      name,
+      r.quizzes.map((q) => q.question),
+    );
+  }
+
   async function save(t: TagInfo, color: string | null) {
     setTags((prev) =>
       prev ? prev.map((x) => (x.id === t.id ? { ...x, color } : x)) : prev,
@@ -46,6 +58,7 @@ export default function TagsPage() {
       <p className="muted">
         色を設定すると、クイズカード・ホームの一覧・円グラフなど全ての表示に反映されます。
         タグ名クリックでそのタグの検索に飛べます。
+        「追加問題を依頼」は、既存の問題と重ならない別角度の問題を AI に作ってもらうプロンプトをコピーします。
       </p>
       {error && <p className="error">{error}</p>}
 
@@ -91,6 +104,12 @@ export default function TagsPage() {
                     クリア
                   </button>
                 )}
+                <span className="tag-prompt">
+                  <CopyPromptButton
+                    text={() => buildTagPrompt(t.name)}
+                    label="追加問題を依頼（プロンプトをコピー）"
+                  />
+                </span>
               </li>
             ))}
           </ul>
