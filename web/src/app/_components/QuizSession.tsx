@@ -7,6 +7,7 @@ import { shuffle } from "../../lib/shuffle";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
+import { SourceKnowledgeView } from "./SourceKnowledgeView";
 
 interface Answered {
   quiz: QuizPublic;
@@ -212,6 +213,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
               <Markdown>{result.explanation}</Markdown>
             </ExplainPopover>
           )}
+          <SourceKnowledgeView knowledge={result.source_knowledge} />
           <p style={{ marginTop: 12 }}>
             <button className="primary" onClick={next}>
               {index + 1 < quizzes.length ? "次へ" : "結果を見る"} <span className="kbd">Enter</span>

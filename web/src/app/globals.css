@@ -855,3 +855,17 @@ a.button-link.secondary {
 .session-score {
   font-size: 1.2rem;
 }
+
+/* 回答後の「元の学び」 */
+details.source-knowledge {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+details.source-knowledge summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

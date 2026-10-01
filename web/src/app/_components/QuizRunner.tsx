@@ -7,6 +7,7 @@ import { shuffle } from "../../lib/shuffle";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
+import { SourceKnowledgeView } from "./SourceKnowledgeView";
 
 /**
  * 1 問を解く UI。設問文は呼び出し側（QuizCard）が表示している前提でここでは繰り返さない。
@@ -110,6 +111,7 @@ export function QuizRunner({
               <Markdown>{result.explanation}</Markdown>
             </ExplainPopover>
           )}
+          <SourceKnowledgeView knowledge={result.source_knowledge} />
         </>
       )}
 
