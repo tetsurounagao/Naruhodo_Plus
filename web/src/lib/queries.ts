@@ -25,6 +25,8 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, ctx
 interface AttemptAgg {
   count: number;
   lastCorrect: boolean | null;
+  /** 直近から数えた連続正解回数。直近が不正解なら 0。 */
+  correctStreak: number;
 }
 
 async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
@@ -39,9 +41,10 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
 
   const map = new Map<string, AttemptAgg>();
   for (const r of rows) {
-    const cur = map.get(r.quiz_id) ?? { count: 0, lastCorrect: null };
+    const cur = map.get(r.quiz_id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
     cur.count += 1;
     cur.lastCorrect = r.is_correct;
+    cur.correctStreak = r.is_correct ? cur.correctStreak + 1 : 0;
     map.set(r.quiz_id, cur);
   }
   return map;
@@ -65,7 +68,7 @@ function tagsOf(row: any): string[] {
 }
 
 function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
-  const a = agg.get(row.id) ?? { count: 0, lastCorrect: null };
+  const a = agg.get(row.id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
   return {
     id: row.id,
     question: row.question,
@@ -668,7 +671,7 @@ export async function dueForReview(): Promise<ReviewItem[]> {
   const out: ReviewItem[] = [];
   for (const row of rows) {
     const base = toQuizPublic(row, agg);
-    const info = reviewInfo(base.last_answered_at, base.attempt_count, base.last_correct);
+    const info = reviewInfo(base.last_answered_at, agg.get(base.id)?.correctStreak ?? 0);
     if (!info || !info.due) continue;
     out.push({ ...base, days_since: info.daysSince, overdue_days: info.overdueDays });
   }
