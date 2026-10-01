@@ -43,6 +43,9 @@ export interface SourceKnowledge {
   context: string | null;
 }
 
+/** 解答時の自信度。unsure の正解は復習間隔の計算で連続正解に数えない。 */
+export type Confidence = "sure" | "unsure";
+
 export interface AttemptResult {
   is_correct: boolean;
   correct_answer: string;

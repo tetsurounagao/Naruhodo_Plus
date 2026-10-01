@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
-import type { AttemptResult, QuizPublic } from "../../lib/types";
+import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
+import { AnswerButtons } from "./AnswerButtons";
+import { ResultLabel } from "./ResultLabel";
 
 /**
  * 1 問を解く UI。設問文は呼び出し側（QuizCard）が表示している前提でここでは繰り返さない。
@@ -28,6 +30,7 @@ export function QuizRunner({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
+  const [confidence, setConfidence] = useState<Confidence>("sure");
   const [busy, setBusy] = useState(false);
   const recallFirst = useRecallFirst();
   const [revealed, setRevealed] = useState(false);
@@ -39,7 +42,7 @@ export function QuizRunner({
       .catch((e: Error) => setError(e.message));
   }, [quizId]);
 
-  async function submit() {
+  async function submit(conf: Confidence) {
     if (!selected) return;
     setBusy(true);
     setError(null);
@@ -47,7 +50,9 @@ export function QuizRunner({
       const r = await apiPost<AttemptResult>("/api/attempts", {
         quiz_id: quizId,
         user_answer: selected,
+        confidence: conf,
       });
+      setConfidence(conf);
       setResult(r);
       onAnswered?.(quizId, r);
     } catch (e) {
@@ -110,19 +115,13 @@ export function QuizRunner({
             })}
           </ul>
 
-          {!result && (
-            <button className="primary" disabled={!selected || busy} onClick={submit}>
-              回答する
-            </button>
-          )}
+          {!result && <AnswerButtons disabled={!selected || busy} onSubmit={submit} />}
         </>
       )}
 
       {result && (
         <>
-          <p className={result.is_correct ? "result-ok" : "result-ng"}>
-            {result.is_correct ? "正解" : "不正解"}
-          </p>
+          <ResultLabel isCorrect={result.is_correct} confidence={confidence} />
           {result.explanation && (
             <ExplainPopover showInput onAddToNote={appendToNote}>
               <Markdown>{result.explanation}</Markdown>

@@ -890,3 +890,15 @@ details.source-knowledge summary {
   border-radius: 8px;
   text-align: center;
 }
+
+/* 回答ボタン（自信度つき） */
+.answer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.result-note {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: 0.85rem;
+}
