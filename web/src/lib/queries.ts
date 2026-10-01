@@ -434,6 +434,32 @@ async function visibleQuizTagIds(): Promise<string[]> {
   return rows.map((r) => r.tag_id);
 }
 
+/**
+ * 学びを物理削除する。タグ紐づけは cascade で消え、非表示クイズの source は null になる。
+ * 表示中のクイズが紐づく学びは消さない（未出題の学びの整理用途のため）。
+ */
+export async function deleteKnowledge(id: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const quizRes = await supabase
+    .from("quizzes")
+    .select("id", { count: "exact", head: true })
+    .eq("source_knowledge_id", id)
+    .eq("hidden", false);
+  if (quizRes.error) throw new Error(`quizzes 確認: ${quizRes.error.message}`);
+  if ((quizRes.count ?? 0) > 0) throw new Error("knowledge has quizzes");
+
+  const row = must(
+    await supabase
+      .from("knowledge_items")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle(),
+    "学びの削除",
+  ) as { id: string } | null;
+  if (!row) throw new Error("knowledge not found");
+}
+
 /** クイズ未生成の学び一覧。「クイズ化を依頼」用。 */
 export async function listUnquizzedKnowledge(limit = 100): Promise<KnowledgeItem[]> {
   const supabase = getSupabaseAdmin();

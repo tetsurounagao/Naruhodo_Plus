@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "../../lib/client";
+import { apiGet, apiPost } from "../../lib/client";
 import type { KnowledgeItem } from "../../lib/types";
 import { Markdown } from "../_components/Markdown";
 import { Tag } from "../_components/Tag";
@@ -25,6 +25,7 @@ export default function KnowledgePage() {
   const [items, setItems] = useState<KnowledgeItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     apiGet<{ knowledge: KnowledgeItem[] }>("/api/knowledge?unquizzed=1")
@@ -42,12 +43,23 @@ export default function KnowledgePage() {
     }
   }
 
+  async function remove(k: KnowledgeItem) {
+    try {
+      await apiPost(`/api/knowledge/${k.id}`, null, "DELETE");
+      setItems((cur) => cur?.filter((x) => x.id !== k.id) ?? cur);
+      setConfirmId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "削除に失敗しました");
+    }
+  }
+
   return (
     <>
       <h1>未出題の学び</h1>
       <p className="muted">
         「クイズ化を依頼」でプロンプトをコピーし、普段使っている AI チャットに貼り付けてください。
         AI が MCP 経由でクイズを生成・保存します。
+        出題に向かない学びは「削除」で取り除けます（元に戻せません）。
       </p>
       {error && <p className="error">{error}</p>}
 
@@ -72,7 +84,16 @@ export default function KnowledgePage() {
             </div>
             <button onClick={() => copy(k)}>
               {copiedId === k.id ? "コピーしました" : "クイズ化を依頼（プロンプトをコピー）"}
-            </button>
+            </button>{" "}
+            {confirmId === k.id ? (
+              <>
+                <span className="muted">削除すると元に戻せません。</span>{" "}
+                <button onClick={() => remove(k)}>削除する</button>{" "}
+                <button onClick={() => setConfirmId(null)}>キャンセル</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmId(k.id)}>削除</button>
+            )}
           </div>
         ))
       )}
