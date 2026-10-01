@@ -6,6 +6,11 @@ export interface QuizChoice {
   content: string;
   /** type === "code" のときのハイライト言語 */
   language?: string;
+  /**
+   * この選択肢がなぜ正解／不正解かの理由。DB の choices には入っているが、
+   * 正解の推測に使えてしまうため解答前のレスポンス（QuizPublic）には含めない。
+   */
+  rationale?: string;
 }
 
 export interface QuizLink {
@@ -52,6 +57,8 @@ export interface AttemptResult {
   explanation: string | null;
   /** 元の学び。未指定・削除済みなら null */
   source_knowledge: SourceKnowledge | null;
+  /** 選択肢 id → その選択肢の理由。理由が無い選択肢は含めない */
+  rationales: Record<string, string>;
 }
 
 export type QuizStatusFilter = "all" | "unanswered" | "answered";
