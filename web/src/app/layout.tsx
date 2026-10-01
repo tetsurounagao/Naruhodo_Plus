@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { JetBrains_Mono, M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
+import "./styles/home.css";
+import "./styles/play.css";
+import "./styles/code.css";
 import { SiteHeader } from "./_components/SiteHeader";
 
 // フォントはビルド時に取り込まれる（表示時に Google へ取りに行かない）。

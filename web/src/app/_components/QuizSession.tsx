@@ -8,6 +8,7 @@ import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
+import { ChoiceContent } from "./ChoiceContent";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
@@ -256,13 +257,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
               <li key={c.id}>
                 <button className={cls} disabled={!!result} onClick={() => setSelected(c.id)}>
                   <span className="choice-key">{i + 1}</span>
-                  {c.type === "code" ? (
-                    <code className="choice-code">{c.content}</code>
-                  ) : c.type === "image" ? (
-                    <img src={c.content} alt="" />
-                  ) : (
-                    <span>{c.content}</span>
-                  )}
+                  <ChoiceContent choice={c} />
                 </button>
               </li>
             );
