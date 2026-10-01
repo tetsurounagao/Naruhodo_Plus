@@ -37,6 +37,8 @@ export interface QuizPublic {
   hidden: boolean;
   /** 「問題がおかしい」の指摘。null = 問題なし、文字列 = 要修正 */
   fix_note: string | null;
+  /** 元にした学びの id。無ければ null（言い換え問題の依頼で使う。答えそのものは含まない） */
+  source_knowledge_id: string | null;
   /** getQuizForAnswering / search の詳細取得時のみ含む */
   links?: QuizLink[];
 }

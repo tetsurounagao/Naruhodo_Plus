@@ -9,6 +9,11 @@ import { Tag } from "./Tag";
 import { QuizRunner } from "./QuizRunner";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
+import { CopyPromptButton } from "./CopyPromptButton";
+import { rephraseQuizPrompt } from "../../lib/quiz-prompts";
+
+/** この回数以上解いていて前回正解なら「言い換えた問題を依頼」を出す */
+const REPHRASE_MIN_ATTEMPTS = 3;
 
 function fmtDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -93,9 +98,18 @@ export function QuizCard({
           }}
         />
       ) : (
-        <button className="primary" onClick={() => setOpen(true)}>
-          解く
-        </button>
+        <div className="card-actions">
+          <button className="primary" onClick={() => setOpen(true)}>
+            解く
+          </button>
+          {/* 問題の形を覚えただけになっていないか、別の問い方で確かめる */}
+          {quiz.attempt_count >= REPHRASE_MIN_ATTEMPTS && quiz.last_correct === true && (
+            <CopyPromptButton
+              text={() => rephraseQuizPrompt({ ...quiz, tags })}
+              label="言い換えた問題を依頼（プロンプトをコピー）"
+            />
+          )}
+        </div>
       )}
 
       {annotationsToggle && !open && (

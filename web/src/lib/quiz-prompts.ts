@@ -1,4 +1,4 @@
-import type { KnowledgeItem, QuizFixSource } from "./types";
+import type { KnowledgeItem, QuizFixSource, QuizPublic } from "./types";
 
 /**
  * AI チャットに貼り付ける「クイズ化の依頼」プロンプト。
@@ -64,5 +64,51 @@ export function fixQuizPrompt(q: QuizFixSource): string {
     `正解: ${q.correct_answer}`,
     `解説: ${q.explanation ?? "(なし)"}`,
     `tags: ${q.tags.join(", ") || "(なし)"}`,
+  ].join("\n");
+}
+
+/** 問題文を一覧用に 1 行へ詰める（コードブロック等の改行も潰す）。 */
+function oneLine(text: string, max = 120): string {
+  const s = text.replace(/\s+/g, " ").trim();
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+/**
+ * タグの学びから、既存の問題と重ならない別角度の問題を追加で作ってもらう。
+ * existingQuestions はそのタグの既存の問題文（重複回避のために同梱する）。
+ */
+export function tagQuizPrompt(tag: string, existingQuestions: string[]): string {
+  return [
+    `Naruhodo+ の list_knowledge を tags: ["${tag}"] で呼び、タグ「${tag}」の学びを取得してください。`,
+    "取得した学びをもとに、下の既存の問題と重ならない別の角度の選択式クイズ（選択肢3〜5個・正解1つ）を 3 問作り、それぞれ save_quiz で保存してください。",
+    "- 既存の問題と同じ問い方・同じ論点の言い換えは避け、別の観点（使いどころ・違い・誤用・理由など）から問うこと",
+    "- source_knowledge_id には元にした学びの id を指定すること",
+    "- tags は元の学びのものを引き継ぐこと",
+    "- 固有名詞や社内文脈は持ち込まないこと",
+    "すべて保存し終えたら、作った問題の要旨を教えてください。",
+    "",
+    `## 既存の問題（${existingQuestions.length} 件）`,
+    ...(existingQuestions.length
+      ? existingQuestions.map((q) => `- ${oneLine(q)}`)
+      : ["(なし)"]),
+  ].join("\n");
+}
+
+/**
+ * 何度も正解している問題について、問い方・観点を変えた問題を 1 問作ってもらう。
+ * 問題の形を覚えただけになっていないかを確かめる用。選択肢・正解は同梱しない。
+ */
+export function rephraseQuizPrompt(q: QuizPublic): string {
+  return [
+    "Naruhodo+ の次のクイズは何度も正解しているので、同じ学びについて問い方・観点を変えた新しい選択式クイズ（選択肢3〜5個・正解1つ）を 1 問作り、save_quiz で保存してください。",
+    q.source_knowledge_id
+      ? `- 元の学び（id: ${q.source_knowledge_id}）は list_knowledge を tags 指定で呼べば見つかります。source_knowledge_id にはこの id を指定すること`
+      : "- 元の学びが分からない問題です。下の問題文から論点を読み取って作ってください",
+    "- 元の問題の言い換えにとどめず、別の角度（逆向きに問う・具体例で問う・誤りを選ばせる など）から問うこと",
+    `- tags は元の問題のもの（${q.tags.join(", ") || "なし"}）を引き継ぐこと`,
+    "- 固有名詞や社内文脈は持ち込まないこと",
+    "",
+    "## 元の問題",
+    q.question,
   ].join("\n");
 }

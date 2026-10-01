@@ -157,6 +157,17 @@ a.tag:hover {
   padding: 4px 8px;
   font-size: 0.8rem;
 }
+.taglist .tag-prompt button {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+/* クイズカードの「解く」と依頼ボタンの並び */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
 button {
   font: inherit;
