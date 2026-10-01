@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { shuffle } from "../../lib/shuffle";
+import { useRecallFirst } from "../../lib/recall-mode";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
@@ -28,6 +29,8 @@ export function QuizRunner({
   const [selected, setSelected] = useState<string | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const recallFirst = useRecallFirst();
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     apiGet<{ quiz: QuizPublic }>(`/api/quizzes/${quizId}`)
@@ -65,43 +68,57 @@ export function QuizRunner({
   if (!quiz) return <p className="muted">読み込み中…</p>;
 
   const showAnnotations = result !== null || quiz.attempt_count > 0;
+  const hideChoices = recallFirst && !revealed && !result;
 
   return (
     <div>
-      <ul className="choices">
-        {quiz.choices.map((c) => {
-          let cls = "";
-          if (result) {
-            if (c.id === result.correct_answer) cls = "correct";
-            else if (c.id === selected) cls = "wrong";
-          } else if (c.id === selected) {
-            cls = "selected";
-          }
-          return (
-            <li key={c.id}>
-              <button
-                className={cls}
-                disabled={!!result}
-                onClick={() => setSelected(c.id)}
-              >
-                {c.type === "code" ? (
-                  <code className="choice-code">{c.content}</code>
-                ) : c.type === "image" ? (
-                  <img src={c.content} alt="" />
-                ) : (
-                  c.content
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      {!result ? (
-        <button className="primary" disabled={!selected || busy} onClick={submit}>
-          回答する
-        </button>
+      {hideChoices ? (
+        <div className="recall-prompt">
+          <p className="muted">まず自分で答えを考えてから、選択肢を表示してください。</p>
+          <button className="primary" onClick={() => setRevealed(true)}>
+            選択肢を表示
+          </button>
+        </div>
       ) : (
+        <>
+          <ul className="choices">
+            {quiz.choices.map((c) => {
+              let cls = "";
+              if (result) {
+                if (c.id === result.correct_answer) cls = "correct";
+                else if (c.id === selected) cls = "wrong";
+              } else if (c.id === selected) {
+                cls = "selected";
+              }
+              return (
+                <li key={c.id}>
+                  <button
+                    className={cls}
+                    disabled={!!result}
+                    onClick={() => setSelected(c.id)}
+                  >
+                    {c.type === "code" ? (
+                      <code className="choice-code">{c.content}</code>
+                    ) : c.type === "image" ? (
+                      <img src={c.content} alt="" />
+                    ) : (
+                      c.content
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {!result && (
+            <button className="primary" disabled={!selected || busy} onClick={submit}>
+              回答する
+            </button>
+          )}
+        </>
+      )}
+
+      {result && (
         <>
           <p className={result.is_correct ? "result-ok" : "result-ng"}>
             {result.is_correct ? "正解" : "不正解"}

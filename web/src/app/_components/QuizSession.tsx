@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiPost } from "../../lib/client";
 import { shuffle } from "../../lib/shuffle";
+import { useRecallFirst } from "../../lib/recall-mode";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
@@ -28,7 +29,12 @@ function firstLine(md: string): string {
 function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el) return false;
-  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
+  if (el.tagName === "INPUT") {
+    // チェックボックス等は文字入力ではないのでキー操作を通す
+    const type = (el as HTMLInputElement).type;
+    return !["checkbox", "radio", "button", "submit"].includes(type);
+  }
+  return el.tagName === "TEXTAREA" || el.isContentEditable;
 }
 
 /**
@@ -45,10 +51,13 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [answered, setAnswered] = useState<Answered[]>([]);
   const [busy, setBusy] = useState(false);
+  const recallFirst = useRecallFirst();
+  const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const quiz = quizzes[index] as QuizPublic | undefined;
   const done = index >= quizzes.length;
+  const hideChoices = recallFirst && !revealed && !result;
 
   const submit = useCallback(async () => {
     if (!quiz || !selected || result || busy) return;
@@ -71,6 +80,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const next = useCallback(() => {
     setSelected(null);
     setResult(null);
+    setRevealed(false);
     setError(null);
     setIndex((i) => i + 1);
     window.scrollTo({ top: 0 });
@@ -82,17 +92,18 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
       if (e.key === "Enter") {
         e.preventDefault();
         if (result) next();
+        else if (hideChoices) setRevealed(true);
         else void submit();
         return;
       }
       const n = Number(e.key);
-      if (!result && Number.isInteger(n) && n >= 1 && n <= quiz.choices.length) {
+      if (!result && !hideChoices && Number.isInteger(n) && n >= 1 && n <= quiz.choices.length) {
         setSelected(quiz.choices[n - 1].id);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, quiz, result, next, submit]);
+  }, [done, quiz, result, hideChoices, next, submit]);
 
   async function appendToNote(snippet: string) {
     if (!quiz) return;
@@ -109,6 +120,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
     setIndex(0);
     setSelected(null);
     setResult(null);
+    setRevealed(false);
   }
 
   if (done) {
@@ -171,35 +183,44 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         ))}
       </div>
 
-      <ul className="choices">
-        {quiz.choices.map((c, i) => {
-          let cls = "";
-          if (result) {
-            if (c.id === result.correct_answer) cls = "correct";
-            else if (c.id === selected) cls = "wrong";
-          } else if (c.id === selected) {
-            cls = "selected";
-          }
-          return (
-            <li key={c.id}>
-              <button className={cls} disabled={!!result} onClick={() => setSelected(c.id)}>
-                <span className="choice-key">{i + 1}</span>
-                {c.type === "code" ? (
-                  <code className="choice-code">{c.content}</code>
-                ) : c.type === "image" ? (
-                  <img src={c.content} alt="" />
-                ) : (
-                  <span>{c.content}</span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {hideChoices ? (
+        <div className="recall-prompt">
+          <p className="muted">まず自分で答えを考えてから、選択肢を表示してください。</p>
+          <button className="primary" onClick={() => setRevealed(true)}>
+            選択肢を表示 <span className="kbd">Enter</span>
+          </button>
+        </div>
+      ) : (
+        <ul className="choices">
+          {quiz.choices.map((c, i) => {
+            let cls = "";
+            if (result) {
+              if (c.id === result.correct_answer) cls = "correct";
+              else if (c.id === selected) cls = "wrong";
+            } else if (c.id === selected) {
+              cls = "selected";
+            }
+            return (
+              <li key={c.id}>
+                <button className={cls} disabled={!!result} onClick={() => setSelected(c.id)}>
+                  <span className="choice-key">{i + 1}</span>
+                  {c.type === "code" ? (
+                    <code className="choice-code">{c.content}</code>
+                  ) : c.type === "image" ? (
+                    <img src={c.content} alt="" />
+                  ) : (
+                    <span>{c.content}</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {error && <p className="error">{error}</p>}
 
-      {!result ? (
+      {hideChoices ? null : !result ? (
         <button className="primary" disabled={!selected || busy} onClick={submit}>
           回答する <span className="kbd">Enter</span>
         </button>
