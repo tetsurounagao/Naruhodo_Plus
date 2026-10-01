@@ -20,19 +20,29 @@ function level(n: number): number {
   return 4;
 }
 
-export function ActivityCalendar() {
+/**
+ * 稼働カレンダー。
+ * answerTimestamps を渡すと解答モードはそれを使い、自前では取得しない（ホームで連続日数用に
+ * 取得済みのものを使い回して二重取得を避ける。null は親が読み込み中）。省略時は自前で取得する。
+ */
+export function ActivityCalendar({ answerTimestamps }: { answerTimestamps?: string[] | null }) {
   const router = useRouter();
   const [kind, setKind] = useState<Kind>("answers");
   // モードごとに一度だけ取得してキャッシュ（切り替えで再取得しない）
   const [countsByKind, setCountsByKind] = useState<Partial<Record<Kind, Record<string, number>>>>({});
-  const counts = countsByKind[kind] ?? null;
+  const provided = kind === "answers" && answerTimestamps !== undefined;
+  const providedCounts = useMemo(
+    () => (answerTimestamps ? countByLocalDate(answerTimestamps) : null),
+    [answerTimestamps],
+  );
+  const counts = provided ? providedCounts : countsByKind[kind] ?? null;
 
   useEffect(() => {
-    if (countsByKind[kind]) return;
+    if (provided || countsByKind[kind]) return;
     apiGet<{ timestamps: string[] }>(`/api/activity?kind=${kind}`)
       .then((r) => setCountsByKind((prev) => ({ ...prev, [kind]: countByLocalDate(r.timestamps) })))
       .catch(() => setCountsByKind((prev) => ({ ...prev, [kind]: {} })));
-  }, [kind, countsByKind]);
+  }, [kind, countsByKind, provided]);
 
   const columns = useMemo(() => {
     const today = new Date();

@@ -1,33 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiGet } from "../lib/client";
-import type { ReviewItem, TagStat } from "../lib/types";
+import type { TagStat } from "../lib/types";
 import { TagPie } from "./_components/TagPie";
 import { Tag } from "./_components/Tag";
 import { ActivityCalendar } from "./_components/ActivityCalendar";
 import { CopyPromptButton } from "./_components/CopyPromptButton";
 import { batchQuizPrompt } from "../lib/quiz-prompts";
+import { currentStreak, localDateKey } from "../lib/streak";
 
 interface HomeData {
   stats: TagStat[];
   unanswered: number;
   unquizzed: number;
   quizTotal: number;
-  dueForReview: ReviewItem[];
   dueCount: number;
 }
+
+/** /play の 1 セッションの最大問題数（play/page.tsx の SESSION_SIZE と揃える）。 */
+const SESSION_SIZE = 10;
 
 export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 解答日時。連続日数とカレンダー（解答モード）の両方で使う（取得は 1 回）
+  const [answerTs, setAnswerTs] = useState<string[] | null>(null);
 
   useEffect(() => {
     apiGet<HomeData>("/api/home")
       .then(setData)
       .catch((e: Error) => setError(e.message));
+    apiGet<{ timestamps: string[] }>("/api/activity?kind=answers")
+      .then((r) => setAnswerTs(r.timestamps))
+      .catch(() => setAnswerTs([]));
   }, []);
+
+  const answerDays = useMemo(
+    () => (answerTs ? new Set(answerTs.map((ts) => localDateKey(new Date(ts)))) : null),
+    [answerTs],
+  );
 
   const stats = data?.stats ?? null;
   const weak = (stats ?? []).filter((s) => s.weak);
@@ -37,79 +50,68 @@ export default function HomePage() {
       <h1>ホーム</h1>
       {error && <p className="error">{error}</p>}
 
+      <h2>今日やること</h2>
       <div className="card">
-        <p>
-          未解答のクイズ: <strong>{data?.unanswered ?? "…"}</strong> 件（
-          <Link href="/quizzes">解く</Link>）
-        </p>
-        <p>
-          まだクイズ化されていない学び: <strong>{data?.unquizzed ?? "…"}</strong> 件（
-          <Link href="/knowledge">一覧</Link>）
-          {data && data.unquizzed > 0 && (
-            <>
-              {" "}
-              <CopyPromptButton
-                text={batchQuizPrompt}
-                label="まとめてクイズ化を依頼（プロンプトをコピー）"
-              />
-            </>
-          )}
-        </p>
-        {data && (data.dueCount > 0 || data.unanswered > 0) && (
-          <div className="button-row">
+        {answerDays && <StreakLine days={answerDays} />}
+        {data === null ? (
+          !error && <p className="muted">読み込み中…</p>
+        ) : data.dueCount === 0 && data.unanswered === 0 && data.unquizzed === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            今日やることはありません。
+          </p>
+        ) : (
+          <ul className="today-list">
             {data.dueCount > 0 && (
-              <Link className="button-link" href="/play?mode=review">
-                今日の復習を始める（{Math.min(data.dueCount, 10)}問）
-              </Link>
+              <li>
+                <span className="today-label">
+                  復習 <strong>{data.dueCount}</strong> 問
+                </span>
+                <span className="today-actions">
+                  <Link className="button-link" href="/play?mode=review">
+                    今日の復習を始める（{Math.min(data.dueCount, SESSION_SIZE)}問）
+                  </Link>
+                  <Link href="/review">一覧</Link>
+                </span>
+              </li>
             )}
             {data.unanswered > 0 && (
-              <Link
-                className={data.dueCount > 0 ? "button-link secondary" : "button-link"}
-                href="/play?mode=unanswered"
-              >
-                未解答を解く（{Math.min(data.unanswered, 10)}問）
-              </Link>
+              <li>
+                <span className="today-label">
+                  未解答 <strong>{data.unanswered}</strong> 問
+                </span>
+                <span className="today-actions">
+                  <Link
+                    className={data.dueCount > 0 ? "button-link secondary" : "button-link"}
+                    href="/play?mode=unanswered"
+                  >
+                    未解答を解く（{Math.min(data.unanswered, SESSION_SIZE)}問）
+                  </Link>
+                  <Link href="/quizzes">一覧</Link>
+                </span>
+              </li>
             )}
-          </div>
+            {data.unquizzed > 0 && (
+              <li>
+                <span className="today-label">
+                  未出題の学び <strong>{data.unquizzed}</strong> 件
+                </span>
+                <span className="today-actions">
+                  <CopyPromptButton
+                    text={batchQuizPrompt}
+                    label="まとめてクイズ化を依頼（プロンプトをコピー）"
+                  />
+                  <Link href="/knowledge">一覧</Link>
+                </span>
+              </li>
+            )}
+          </ul>
         )}
       </div>
 
       <h2>最近の活動</h2>
       <div className="card">
-        <ActivityCalendar />
+        <ActivityCalendar answerTimestamps={answerTs} />
       </div>
-
-      {data && data.dueForReview.length > 0 && (
-        <>
-          <h2>復習のおすすめ</h2>
-          <div className="card">
-            <ul className="duelist">
-              {data.dueForReview.map((it) => (
-                <li key={it.id}>
-                  <span className="days">{it.days_since}日前</span>
-                  <span className="q">{it.question}</span>
-                </li>
-              ))}
-            </ul>
-            <p style={{ marginTop: 12 }}>
-              <Link href="/review">
-                {data.dueCount > data.dueForReview.length
-                  ? `さらに表示（全 ${data.dueCount} 件）`
-                  : "復習ページで解く →"}
-              </Link>
-            </p>
-          </div>
-        </>
-      )}
-
-      <h2>出題の内訳</h2>
-      {stats === null ? (
-        <p className="muted">読み込み中…</p>
-      ) : (
-        <div className="card">
-          <TagPie stats={stats} quizTotal={data?.quizTotal ?? 0} />
-        </div>
-      )}
 
       <h2>要復習タグ</h2>
       {stats === null ? (
@@ -126,6 +128,15 @@ export default function HomePage() {
               <Link href={`/play?tag=${encodeURIComponent(s.tag_name)}`}>このタグを解く →</Link>
             </div>
           ))}
+        </div>
+      )}
+
+      <h2>出題の内訳</h2>
+      {stats === null ? (
+        <p className="muted">読み込み中…</p>
+      ) : (
+        <div className="card">
+          <TagPie stats={stats} quizTotal={data?.quizTotal ?? 0} />
         </div>
       )}
 
@@ -147,5 +158,27 @@ export default function HomePage() {
         </div>
       )}
     </>
+  );
+}
+
+/** 連続学習日数の 1 行。今日まだ解いていなければ「今日解くと N+1 日」と促す。 */
+function StreakLine({ days }: { days: Set<string> }) {
+  const streak = currentStreak(days);
+  const doneToday = days.has(localDateKey(new Date()));
+  return (
+    <p className="today-streak">
+      {streak === 0 ? (
+        <span className="muted">連続学習の記録はまだありません。今日 1 問解くとスタート。</span>
+      ) : doneToday ? (
+        <>
+          連続学習 <strong>{streak}</strong> 日（今日も解答済み）
+        </>
+      ) : (
+        <>
+          連続学習 <strong>{streak}</strong> 日
+          <span className="muted">（今日解くと {streak + 1} 日）</span>
+        </>
+      )}
+    </p>
   );
 }

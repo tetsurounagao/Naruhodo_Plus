@@ -746,7 +746,7 @@ export async function homeSummary(): Promise<{
   unanswered: number;
   unquizzed: number;
   quizTotal: number;
-  dueForReview: ReviewItem[];
+  /** 復習期限が来ている問題数（一覧は /review。ホームは件数だけ使う） */
   dueCount: number;
 }> {
   const supabase = getSupabaseAdmin();
@@ -765,7 +765,6 @@ export async function homeSummary(): Promise<{
     unanswered: unansweredQuizzes.length,
     unquizzed: unquizzed.length,
     quizTotal: countRes.count ?? 0,
-    dueForReview: due.slice(0, 5),
     dueCount: due.length,
   };
 }
