@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiGet } from "../../lib/client";
 import type { ReviewItem } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
+import { RecallToggle } from "../_components/RecallToggle";
 
 const BUCKETS: { min: number; label: string }[] = [
   { min: 60, label: "60日以上あいた" },
@@ -48,6 +49,7 @@ export default function ReviewPage() {
       <p className="muted">
         忘却曲線ベースで、そろそろ解き直すとよい問題です（強制ではありません）。
       </p>
+      <RecallToggle />
       {items.length > 0 && (
         <p>
           <Link className="button-link" href="/play?mode=review">

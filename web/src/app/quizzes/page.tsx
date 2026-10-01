@@ -6,6 +6,7 @@ import type { AttemptResult, QuizPublic } from "../../lib/types";
 import { QuizCard } from "../_components/QuizCard";
 import { QuizFilters, type FilterState } from "../_components/QuizFilters";
 import { Pager, PAGE_SIZE } from "../_components/Pager";
+import { RecallToggle } from "../_components/RecallToggle";
 
 const DEFAULT_FILTERS: FilterState = {
   status: "unanswered",
@@ -64,6 +65,7 @@ export default function QuizzesPage() {
       {error && <p className="error">{error}</p>}
 
       <QuizFilters value={filters} onChange={setFilters} />
+      <RecallToggle />
 
       {quizzes === null ? (
         <p className="muted">読み込み中…</p>
