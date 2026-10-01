@@ -7,6 +7,7 @@ import { apiGet } from "../../lib/client";
 import type { QuizPublic, ReviewItem } from "../../lib/types";
 import { QuizSession } from "../_components/QuizSession";
 import { RecallToggle } from "../_components/RecallToggle";
+import { SoundToggle } from "../_components/SoundToggle";
 
 /** 1 セッションで出す最大問題数。 */
 const SESSION_SIZE = 10;
@@ -69,7 +70,10 @@ function Play() {
           <p className="muted" style={{ fontSize: "0.85rem" }}>
             数字キーで選択、Enter（自信あり）/ Shift+Enter（あやふや）で回答、Enter で次へ進めます。
           </p>
-          <RecallToggle />
+          <div className="play-toggles">
+            <RecallToggle />
+            <SoundToggle />
+          </div>
           <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} />
         </>
       )}

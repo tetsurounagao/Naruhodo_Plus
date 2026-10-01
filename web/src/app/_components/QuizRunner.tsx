@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "../../lib/client";
 import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
+import { feedback, useSoundOn } from "../../lib/feedback";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
@@ -35,6 +36,7 @@ export function QuizRunner({
   const [selected, setSelected] = useState<string | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [confidence, setConfidence] = useState<Confidence>("sure");
+  const sound = useSoundOn();
   const [busy, setBusy] = useState(false);
   const recallFirst = useRecallFirst();
   const [revealed, setRevealed] = useState(false);
@@ -58,6 +60,7 @@ export function QuizRunner({
       });
       setConfidence(conf);
       setResult(r);
+      feedback(!r.is_correct ? "wrong" : conf === "unsure" ? "unsure" : "correct", sound);
       onAnswered?.(quizId, r);
     } catch (e) {
       setError((e as Error).message);
