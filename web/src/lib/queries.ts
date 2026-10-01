@@ -12,6 +12,7 @@ import type {
   QuizSortKey,
   QuizStatusFilter,
   HiddenFilter,
+  Confidence,
   ReviewItem,
   SourceKnowledge,
   TagInfo,
@@ -26,7 +27,7 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, ctx
 interface AttemptAgg {
   count: number;
   lastCorrect: boolean | null;
-  /** 直近から数えた連続正解回数。直近が不正解なら 0。 */
+  /** 直近から数えた「自信ありの」連続正解回数。直近が不正解・あやふやなら 0。 */
   correctStreak: number;
 }
 
@@ -35,17 +36,24 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
   const rows = must(
     await supabase
       .from("quiz_attempts")
-      .select("quiz_id, is_correct, answered_at")
+      .select("quiz_id, is_correct, confidence, answered_at")
       .order("answered_at", { ascending: true }),
     "quiz_attempts 取得",
-  ) as { quiz_id: string; is_correct: boolean; answered_at: string }[];
+  ) as {
+    quiz_id: string;
+    is_correct: boolean;
+    confidence: Confidence | null;
+    answered_at: string;
+  }[];
 
   const map = new Map<string, AttemptAgg>();
   for (const r of rows) {
     const cur = map.get(r.quiz_id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
     cur.count += 1;
     cur.lastCorrect = r.is_correct;
-    cur.correctStreak = r.is_correct ? cur.correctStreak + 1 : 0;
+    // あやふやで正解（まぐれ当たりの可能性）は連続正解に数えず、早めに再出題する
+    const solid = r.is_correct && r.confidence !== "unsure";
+    cur.correctStreak = solid ? cur.correctStreak + 1 : 0;
     map.set(r.quiz_id, cur);
   }
   return map;
@@ -205,6 +213,7 @@ export async function getQuizForAnswering(id: string): Promise<QuizPublic | null
 export async function gradeAndRecord(
   quizId: string,
   userAnswer: string,
+  confidence: Confidence,
 ): Promise<AttemptResult> {
   const supabase = getSupabaseAdmin();
   const quiz = must(
@@ -232,7 +241,7 @@ export async function gradeAndRecord(
   must(
     await supabase
       .from("quiz_attempts")
-      .insert({ quiz_id: quizId, user_answer: userAnswer, is_correct: isCorrect })
+      .insert({ quiz_id: quizId, user_answer: userAnswer, is_correct: isCorrect, confidence })
       .select("id")
       .single(),
     "quiz_attempts 記録",

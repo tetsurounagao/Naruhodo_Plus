@@ -67,7 +67,7 @@ function Play() {
       ) : (
         <>
           <p className="muted" style={{ fontSize: "0.85rem" }}>
-            数字キーで選択、Enter で回答・次へ進めます。
+            数字キーで選択、Enter（自信あり）/ Shift+Enter（あやふや）で回答、Enter で次へ進めます。
           </p>
           <RecallToggle />
           <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} />

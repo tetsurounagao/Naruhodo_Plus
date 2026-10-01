@@ -5,14 +5,22 @@ import Link from "next/link";
 import { apiPost } from "../../lib/client";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
-import type { AttemptResult, QuizPublic } from "../../lib/types";
+import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
+import { AnswerButtons } from "./AnswerButtons";
+import { ResultLabel } from "./ResultLabel";
 
 interface Answered {
   quiz: QuizPublic;
   result: AttemptResult;
+  confidence: Confidence;
+}
+
+/** もう一度解くべき問題か（不正解、または あやふやで正解）。 */
+function needsRetry(a: Answered): boolean {
+  return !a.result.is_correct || a.confidence === "unsure";
 }
 
 /** 設問の Markdown から一覧表示用の 1 行を取り出す（コードブロックは飛ばす）。 */
@@ -59,7 +67,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const done = index >= quizzes.length;
   const hideChoices = recallFirst && !revealed && !result;
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (confidence: Confidence) => {
     if (!quiz || !selected || result || busy) return;
     setBusy(true);
     setError(null);
@@ -67,9 +75,10 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
       const r = await apiPost<AttemptResult>("/api/attempts", {
         quiz_id: quiz.id,
         user_answer: selected,
+        confidence,
       });
       setResult(r);
-      setAnswered((prev) => [...prev, { quiz, result: r }]);
+      setAnswered((prev) => [...prev, { quiz, result: r, confidence }]);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -93,7 +102,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         e.preventDefault();
         if (result) next();
         else if (hideChoices) setRevealed(true);
-        else void submit();
+        else void submit(e.shiftKey ? "unsure" : "sure");
         return;
       }
       const n = Number(e.key);
@@ -114,8 +123,8 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   }
 
   function retryWrong() {
-    const wrong = answered.filter((a) => !a.result.is_correct).map((a) => a.quiz);
-    setQuizzes(prepare(wrong));
+    const retry = answered.filter(needsRetry).map((a) => a.quiz);
+    setQuizzes(prepare(retry));
     setAnswered([]);
     setIndex(0);
     setSelected(null);
@@ -126,31 +135,40 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   if (done) {
     const correct = answered.filter((a) => a.result.is_correct).length;
     const wrong = answered.filter((a) => !a.result.is_correct);
+    const unsure = answered.filter((a) => a.result.is_correct && a.confidence === "unsure");
+    const list = (title: string, items: Answered[]) =>
+      items.length > 0 && (
+        <>
+          <h2>{title}</h2>
+          <ul className="duelist">
+            {items.map((a) => (
+              <li key={a.quiz.id}>
+                <span className="q">{firstLine(a.quiz.question)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
     return (
       <div className="card session-summary">
         <p className="session-score">
           {answered.length} 問中 <strong>{correct}</strong> 問正解
+          {unsure.length > 0 && <span className="muted">（うち あやふや {unsure.length} 問）</span>}
         </p>
-        {wrong.length > 0 ? (
+        {wrong.length + unsure.length > 0 ? (
           <>
-            <h2>間違えた問題</h2>
-            <ul className="duelist">
-              {wrong.map((a) => (
-                <li key={a.quiz.id}>
-                  <span className="q">{firstLine(a.quiz.question)}</span>
-                </li>
-              ))}
-            </ul>
+            {list("間違えた問題", wrong)}
+            {list("あやふやだった問題", unsure)}
             <p style={{ marginTop: 12 }}>
               <button className="primary" onClick={retryWrong}>
-                間違えた問題だけもう一度
+                間違えた・あやふやだった問題をもう一度
               </button>{" "}
               <Link href="/">ホームへ</Link>
             </p>
           </>
         ) : (
           <p>
-            全問正解です。 <Link href="/">ホームへ</Link>
+            全問 自信ありで正解です。 <Link href="/">ホームへ</Link>
           </p>
         )}
       </div>
@@ -221,14 +239,13 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
       {error && <p className="error">{error}</p>}
 
       {hideChoices ? null : !result ? (
-        <button className="primary" disabled={!selected || busy} onClick={submit}>
-          回答する <span className="kbd">Enter</span>
-        </button>
+        <AnswerButtons disabled={!selected || busy} onSubmit={submit} showKeys />
       ) : (
         <>
-          <p className={result.is_correct ? "result-ok" : "result-ng"}>
-            {result.is_correct ? "正解" : "不正解"}
-          </p>
+          <ResultLabel
+            isCorrect={result.is_correct}
+            confidence={answered[answered.length - 1]?.confidence ?? "sure"}
+          />
           {result.explanation && (
             <ExplainPopover showInput onAddToNote={appendToNote}>
               <Markdown>{result.explanation}</Markdown>
