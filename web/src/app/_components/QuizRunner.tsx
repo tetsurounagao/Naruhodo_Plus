@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/client";
 import type { AttemptResult, QuizPublic } from "../../lib/types";
+import { shuffle } from "../../lib/shuffle";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
@@ -29,7 +30,8 @@ export function QuizRunner({
 
   useEffect(() => {
     apiGet<{ quiz: QuizPublic }>(`/api/quizzes/${quizId}`)
-      .then((r) => setQuiz(r.quiz))
+      // 位置で正解を覚えないよう、開くたびに選択肢の並びを変える
+      .then((r) => setQuiz({ ...r.quiz, choices: shuffle(r.quiz.choices) }))
       .catch((e: Error) => setError(e.message));
   }, [quizId]);
 
