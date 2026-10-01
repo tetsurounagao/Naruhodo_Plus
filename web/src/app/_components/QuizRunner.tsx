@@ -22,10 +22,13 @@ export function QuizRunner({
   quizId,
   onAnswered,
   onClose,
+  onFixNoteChange,
 }: {
   quizId: string;
   onAnswered?: (quizId: string, result: AttemptResult) => void;
   onClose: () => void;
+  /** 「問題がおかしい」フラグの変更を親（カードの表示）に伝える */
+  onFixNoteChange?: (fixNote: string | null) => void;
 }) {
   const [quiz, setQuiz] = useState<QuizPublic | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +145,11 @@ export function QuizRunner({
           initialLinks={quiz.links}
           initialTags={quiz.tags}
           initialHidden={quiz.hidden}
+          initialFixNote={quiz.fix_note}
+          onFixNoteChange={(v) => {
+            setQuiz((q) => (q ? { ...q, fix_note: v } : q));
+            onFixNoteChange?.(v);
+          }}
         />
       )}
 

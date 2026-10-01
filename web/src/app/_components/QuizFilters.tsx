@@ -8,6 +8,8 @@ export interface FilterState {
   minStar: number;
   /** true で非表示のクイズのみ表示（解除用） */
   hiddenOnly: boolean;
+  /** true で「問題がおかしい」と指摘した要修正のクイズのみ表示 */
+  fixOnly: boolean;
 }
 
 const STATUS_LABELS: [QuizStatusFilter, string][] = [
@@ -87,6 +89,16 @@ export function QuizFilters({
           }
         />
         非表示のみ
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={value.fixOnly}
+          onChange={(e) =>
+            onChange({ ...value, fixOnly: e.target.checked })
+          }
+        />
+        要修正のみ
       </label>
     </div>
   );

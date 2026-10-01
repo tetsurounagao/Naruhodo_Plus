@@ -56,6 +56,7 @@ export const GET = handle(async (req) => {
     sort,
     minStar,
     hidden,
+    fixOnly: p.get("fix") === "only",
     includeNote: p.get("note") === "1",
     includeLinkTitles: p.get("titles") === "1",
     createdFrom: iso(p.get("from")),

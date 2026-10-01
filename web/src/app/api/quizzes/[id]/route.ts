@@ -9,19 +9,27 @@ export const GET = handleParams<{ id: string }>(async (_req, { id }) => {
   return ok({ quiz });
 });
 
-/** star / note / hidden の更新。 */
+/** star / note / hidden / fix_note の更新。fix_note は null で解除。 */
 export const PATCH = handleParams<{ id: string }>(async (req, { id }) => {
   await requireUser();
   const body = (await req.json().catch(() => null)) as
-    | { star?: number; note?: string | null; hidden?: boolean }
+    | { star?: number; note?: string | null; hidden?: boolean; fix_note?: string | null }
     | null;
   if (
     !body ||
     (body.star === undefined &&
       body.note === undefined &&
-      body.hidden === undefined)
+      body.hidden === undefined &&
+      body.fix_note === undefined)
   ) {
-    return fail(400, "star / note / hidden のいずれかを指定してください");
+    return fail(400, "star / note / hidden / fix_note のいずれかを指定してください");
+  }
+  if (
+    body.fix_note !== undefined &&
+    body.fix_note !== null &&
+    typeof body.fix_note !== "string"
+  ) {
+    return fail(400, "fix_note は文字列か null で指定してください");
   }
   try {
     const updated = await setQuizAnnotation(id, body);

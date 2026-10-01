@@ -249,6 +249,37 @@ export async function getTagStats(
 }
 
 /**
+ * クイズが存在するか確認する（save_quiz の replaces_quiz_id 検証用）。
+ */
+export async function quizExists(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) fail("クイズの存在確認に失敗", error);
+  return Boolean(data);
+}
+
+/**
+ * 直した問題で置き換えられた元のクイズを退役させる（非表示にし、要修正フラグを解除）。
+ * 削除はしないので解答履歴は元のクイズに残る。
+ */
+export async function retireReplacedQuiz(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("quizzes")
+    .update({ hidden: true, fix_note: null })
+    .eq("id", id);
+  if (error) fail("元のクイズの非表示化に失敗", error);
+}
+
+/**
  * 学びが存在するか確認する（save_quiz の source_knowledge_id 検証用）。
  */
 export async function knowledgeExists(

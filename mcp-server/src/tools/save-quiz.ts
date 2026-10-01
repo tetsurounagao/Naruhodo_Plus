@@ -2,7 +2,12 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolContext } from "../context.js";
 import { normalizeTags } from "../lib/normalize-tags.js";
-import { insertQuiz, knowledgeExists } from "../db.js";
+import {
+  insertQuiz,
+  knowledgeExists,
+  quizExists,
+  retireReplacedQuiz,
+} from "../db.js";
 
 const DESCRIPTION = `会話で生成した選択式クイズを1問保存する。list_knowledge で取得した学びをもとに作る。
 
@@ -40,6 +45,10 @@ const DESCRIPTION = `会話で生成した選択式クイズを1問保存する�
 ## 注意
 - 機密情報の抽象化は add_knowledge 時点で済んでいる前提。クイズ文・コードにも社内固有の
   識別子や固有名詞を持ち込まない。持ち込む必要があるなら汎用名に置き換える。
+- 要修正の問題を直すとき（「問題がおかしい」と指摘された問題の修正を頼まれたとき）は、
+  元の問題を書き換えるのではなく、直した問題を新規保存し replaces_quiz_id に元の問題の id を渡す。
+  元の問題は自動で非表示になり、要修正フラグも外れる。解答履歴は元の問題に残る。
+  tags と source_knowledge_id は元の問題のものを引き継ぐ。
 - 同じ学びから複数問できても構わない。重複は気にせず保存してよい。
 - 生成AI名はサーバーが created_by に自動記録する。`;
 
@@ -84,6 +93,13 @@ const shape = {
     .array(z.string())
     .default([])
     .describe("タグ。元の学びから引き継ぐ"),
+  replaces_quiz_id: z
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "要修正の問題を直したときだけ指定する元の問題の id。保存後に元の問題は自動で非表示になる",
+    ),
 };
 
 export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
@@ -101,6 +117,7 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
       explanation,
       source_knowledge_id,
       tags,
+      replaces_quiz_id,
     }) => {
       const ids = choices.map((c) => c.id);
       if (new Set(ids).size !== ids.length) {
@@ -136,6 +153,21 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
         }
       }
 
+      if (replaces_quiz_id) {
+        const exists = await quizExists(ctx.supabase, replaces_quiz_id);
+        if (!exists) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `replaces_quiz_id ${replaces_quiz_id} に対応するクイズが見つかりません。`,
+              },
+            ],
+          };
+        }
+      }
+
       const { id } = await insertQuiz(ctx.supabase, {
         question,
         choices: choices.map((c) => ({
@@ -152,11 +184,20 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
         tags: normalizeTags(tags ?? []),
       });
 
+      // 新しい問題の保存に成功してから元の問題を退役させる（失敗時に元が消えないように）
+      if (replaces_quiz_id) {
+        await retireReplacedQuiz(ctx.supabase, replaces_quiz_id);
+      }
+
       return {
         content: [
           {
             type: "text",
-            text: `クイズを保存しました（id: ${id}, created_by: ${ctx.config.clientName}）`,
+            text:
+              `クイズを保存しました（id: ${id}, created_by: ${ctx.config.clientName}）` +
+              (replaces_quiz_id
+                ? `。元の問題 ${replaces_quiz_id} は非表示にしました`
+                : ""),
           },
         ],
       };
