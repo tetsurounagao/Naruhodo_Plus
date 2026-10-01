@@ -270,7 +270,8 @@ code.choice-code {
   gap: 4px;
 }
 .filters select,
-.filters input[type="text"] {
+.filters input[type="text"],
+.filters input[type="search"] {
   font: inherit;
   padding: 5px 8px;
   border-radius: 8px;
@@ -280,6 +281,10 @@ code.choice-code {
 }
 .filters input[type="checkbox"] {
   width: auto;
+}
+.filters input[type="search"] {
+  flex: 1;
+  min-width: 12em;
 }
 
 /* クイズカードのメタ行 */
