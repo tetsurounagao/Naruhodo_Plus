@@ -16,6 +16,7 @@ import { SessionSummary } from "./SessionSummary";
 import { feedback, useSoundOn } from "../../lib/feedback";
 import { comboTier, scoreTurn } from "../../lib/quiz-score";
 import { countByLocalDate, localDateKey } from "../../lib/streak";
+import { notifyAnswered } from "../../lib/daily-goal";
 
 export interface Answered {
   quiz: QuizPublic;
@@ -97,6 +98,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         user_answer: selected,
         confidence,
       });
+      notifyAnswered();
       const turn = scoreTurn(r.is_correct, confidence, comboRef.current);
       comboRef.current = turn.combo;
       setResult(r);

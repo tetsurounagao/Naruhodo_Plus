@@ -6,6 +6,7 @@ import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import { feedback, useSoundOn } from "../../lib/feedback";
+import { notifyAnswered } from "../../lib/daily-goal";
 import { Markdown } from "./Markdown";
 import { QuizAnnotations } from "./QuizAnnotations";
 import { ExplainPopover } from "./ExplainPopover";
@@ -61,6 +62,7 @@ export function QuizRunner({
       setConfidence(conf);
       setResult(r);
       feedback(!r.is_correct ? "wrong" : conf === "unsure" ? "unsure" : "correct", sound);
+      notifyAnswered();
       onAnswered?.(quizId, r);
     } catch (e) {
       setError((e as Error).message);
