@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolContext } from "../context.js";
 import { normalizeTags } from "../lib/normalize-tags.js";
+import { lintQuiz } from "../lib/quiz-lint.js";
 import {
   insertQuiz,
   knowledgeExists,
@@ -19,20 +20,33 @@ const DESCRIPTION = `会話で生成した選択式クイズを1問保存する�
 - スラッシュコマンドに頼らず、この自然文で発火してよい。
 
 ## 作り方の指針
-- 選択式のみ。選択肢は3〜5個。正解はちょうど1つ。
-- choices は各要素 { id, type, content, language?, rationale? } の配列。
+- 選択式のみ。選択肢は3〜5個（サーバーで強制）。正解はちょうど1つ。
+- choices は各要素 { id, type, content, language?, rationale } の配列。
   - id: "a" "b" "c" ... のような短い識別子。
   - type: "text"（文字列）/ "code"（コード片。等幅＋シンタックスハイライト表示）/ "image"（画像URL）。
   - content: 表示内容。type が "code" ならコード文字列そのもの、"image" なら画像URL。
   - language: type が "code" のときのハイライト言語（"ts" "python" "sql" など）。任意。
-  - rationale: その選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）。
+  - rationale: その選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）。**全選択肢に必須**。
 - correct_answer: 正解の選択肢の id（content ではなく id）。
 - choices を渡す順序は気にしなくてよい。正解を先頭に置いて残りを後から書いてよい
   （並び順は保存時にサーバー側でランダムに入れ替わる。id は変わらないので correct_answer の指定はそのままでよい）。
-- explanation: なぜその答えになるかの簡潔な解説。Markdown 可。コードは \`\`\` フェンスで。
-- 各選択肢に rationale を付ける（誤答はなぜ誤りか、正解はなぜ正しいか）。
+- explanation: なぜその答えになるかの簡潔な解説。**必須**。Markdown 可。コードは \`\`\` フェンスで。
+- 各選択肢の rationale（誤答はなぜ誤りか、正解はなぜ正しいか）も必須。
   explanation は全体の解説、rationale は選択肢ごとの短い理由。
   rationale は解答後にだけ表示されるので、正解が分かる書き方をしてよい。
+
+## 誤答（不正解の選択肢）の作り方
+- 学習者が実際にしがちな勘違い・混同・古い知識から作る。もっともらしいものだけにする。
+- 正解と同じくらいの長さ・具体性・文体にそろえる。正解だけ詳しく長いと、長さで正解が分かってしまう。
+- 「すべて正しい」「いずれも誤り」「該当なし」のような選択肢は使わない。
+- 冗談や明らかに無関係な選択肢（消去法ですぐ外せるもの）を入れない。
+
+## 保存前のチェック（サーバーが機械的に行う）
+- 次に当てはまると保存せず、理由と直し方を返す。指摘どおり直して、もう一度 save_quiz を呼ぶこと。
+  - 選択肢の中身が重複している
+  - 穴埋めの空所（____）が 2 か所以上ある
+  - 文字の選択肢で、正解だけがほかの最長の 2 倍以上長い（正解が 20 文字以上のとき）
+- コードの選択肢で language を省いた場合は、問題文のコードフェンスの言語で自動的に補う。
 - source_knowledge_id: 元にした学びの id（list_knowledge の [id]）。分かる場合は必ず付ける。
 - tags: 元の学びのタグを引き継ぐ。半角英数の短い文字列。表記ゆれは自動正規化。
 
@@ -67,23 +81,28 @@ const choiceSchema = z.object({
     .optional()
     .describe('type が "code" のときのハイライト言語（"ts" 等）。任意'),
   rationale: z
-    .string()
-    .optional()
-    .describe("この選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）"),
+    .string({ error: "rationale（この選択肢がなぜ正解／不正解かの理由）は全選択肢に必須です" })
+    .trim()
+    .min(1, "rationale（この選択肢がなぜ正解／不正解かの理由）は全選択肢に必須です")
+    .describe("この選択肢がなぜ正解／不正解かの理由（1〜2文。Markdown 可）。必須"),
 });
 
 const shape = {
   question: z.string().min(1).describe("設問文"),
   choices: z
     .array(choiceSchema)
-    .min(2)
-    .max(6)
-    .describe("選択肢の配列（3〜5個推奨）"),
+    .min(3, "選択肢は 3〜5 個にしてください")
+    .max(5, "選択肢は 3〜5 個にしてください")
+    .describe("選択肢の配列（3〜5個）"),
   correct_answer: z
     .string()
     .min(1)
     .describe("正解の選択肢の id"),
-  explanation: z.string().optional().describe("解説（任意だが推奨）"),
+  explanation: z
+    .string({ error: "explanation（全体の解説）は必須です" })
+    .trim()
+    .min(1, "explanation（全体の解説）は必須です")
+    .describe("なぜその答えになるかの解説。必須"),
   source_knowledge_id: z
     .string()
     .uuid()
@@ -138,6 +157,22 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
         };
       }
 
+      // 保存前の機械チェック。引っかかったら保存せず、指摘と直し方をまとめて返す
+      const lint = lintQuiz({ question, choices, correctAnswer: correct_answer });
+      if (!lint.ok) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "保存していません。次の点を直して、もう一度 save_quiz を呼んでください。\n" +
+                lint.issues.map((i) => `- ${i.message}`).join("\n"),
+            },
+          ],
+        };
+      }
+
       if (source_knowledge_id) {
         const exists = await knowledgeExists(ctx.supabase, source_knowledge_id);
         if (!exists) {
@@ -170,12 +205,12 @@ export function registerSaveQuiz(server: McpServer, ctx: ToolContext): void {
 
       const { id } = await insertQuiz(ctx.supabase, {
         question,
-        choices: choices.map((c) => ({
+        choices: lint.choices.map((c) => ({
           id: c.id,
           type: c.type,
           content: c.content,
           ...(c.type === "code" && c.language ? { language: c.language } : {}),
-          ...(c.rationale?.trim() ? { rationale: c.rationale.trim() } : {}),
+          rationale: c.rationale,
         })),
         correctAnswer: correct_answer,
         explanation,
