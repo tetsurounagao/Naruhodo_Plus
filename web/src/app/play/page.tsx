@@ -44,12 +44,19 @@ function Play() {
   const mode = params.get("mode");
   const tag = params.get("tag");
   const [quizzes, setQuizzes] = useState<QuizPublic[] | null>(null);
+  // 取り下げたときに足す予備（11 問目以降）
+  const [reserve, setReserve] = useState<QuizPublic[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setQuizzes(null);
     loadQuizzes(mode, tag)
-      .then((qs) => setQuizzes(qs.slice(0, SESSION_SIZE)))
+      .then((qs) => {
+        // 「問題がおかしい」（要修正）が付いた問題は、直るまで出題しない
+        const pool = qs.filter((q) => q.fix_note === null);
+        setQuizzes(pool.slice(0, SESSION_SIZE));
+        setReserve(pool.slice(SESSION_SIZE));
+      })
       .catch((e: Error) => setError(e.message));
   }, [mode, tag]);
 
@@ -68,7 +75,7 @@ function Play() {
         </p>
       ) : (
         // 選択肢を隠す・効果音の切り替えとキー操作の説明は、上部バーの設定ボタンにまとめた
-        <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} />
+        <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} reserve={reserve} />
       )}
     </>
   );

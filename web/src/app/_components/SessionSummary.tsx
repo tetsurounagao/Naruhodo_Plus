@@ -84,6 +84,7 @@ export function SessionSummary({
   maxCombo,
   sound,
   todayBefore,
+  withdrawn = 0,
   onRetry,
 }: {
   answered: Answered[];
@@ -92,6 +93,8 @@ export function SessionSummary({
   sound: boolean;
   /** セッション開始時点で今日すでに解いていた数（不明なら null） */
   todayBefore: number | null;
+  /** このセッションで取り下げた問題の数 */
+  withdrawn?: number;
   onRetry?: () => void;
 }) {
   const total = answered.length;
@@ -152,7 +155,12 @@ export function SessionSummary({
     <div className="card session-summary">
       {(rank === "S" || rank === "A") && <Confetti count={rank === "S" ? 90 : 50} />}
 
-      <p className="summary-kicker">{total} 問おつかれさま！</p>
+      <p className="summary-kicker">
+        {total} 問おつかれさま！
+        {withdrawn > 0 && (
+          <span className="summary-withdrawn">（取り下げ {withdrawn} 問は「要修正」に回しました）</span>
+        )}
+      </p>
       <div className="summary-hero">
         <span className={`rank-stamp rank-${rank}`} role="img" aria-label={`ランク ${rank}`}>
           {rank}
