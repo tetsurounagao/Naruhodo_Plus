@@ -924,3 +924,66 @@ div.picked-rationale {
     font-size: 2.1rem;
   }
 }
+
+/* ---- 問題の取り下げ ---- */
+.withdraw-trigger {
+  margin-left: 8px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: 2px dashed var(--border);
+  box-shadow: none;
+}
+.withdraw-trigger:not(:disabled):hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-weak);
+}
+.withdraw-panel {
+  margin: 4px 0 14px;
+  padding: 14px 16px;
+  border: 2px solid var(--danger-weak);
+  border-radius: var(--radius-sm);
+  background: var(--danger-weak);
+}
+.withdraw-title {
+  margin: 0 0 4px;
+  font-weight: 800;
+  color: var(--danger-strong);
+}
+.withdraw-note {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.withdraw-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.withdraw-reasons button {
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+}
+.withdraw-reasons button.on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--danger-strong);
+}
+.withdraw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.summary-withdrawn {
+  margin-left: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted);
+}

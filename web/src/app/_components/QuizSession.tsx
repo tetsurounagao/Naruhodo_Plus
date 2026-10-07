@@ -19,6 +19,7 @@ import { bulbChangeOf } from "./BulbChange";
 import { CloseIcon, FlameIcon } from "./PlayIcons";
 import { Confetti } from "./Confetti";
 import { SessionSummary } from "./SessionSummary";
+import { WithdrawPanel } from "./WithdrawPanel";
 import { feedback, useSoundOn } from "../../lib/feedback";
 import { comboTier, scoreTurn } from "../../lib/quiz-score";
 import { countByLocalDate, localDateKey } from "../../lib/streak";
@@ -29,6 +30,9 @@ export interface Answered {
   result: AttemptResult;
   confidence: Confidence;
   points: number;
+  /** この解答の直前のコンボと最大コンボ（解答後に取り下げたとき元に戻すため） */
+  comboBefore: number;
+  maxComboBefore: number;
 }
 
 /** もう一度解くべき問題か（不正解、または あやふやで正解）。 */
@@ -57,8 +61,16 @@ function isTyping(target: EventTarget | null): boolean {
 /**
  * 連続出題。渡されたクイズを 1 問ずつ出し、最後に結果のまとめを出す。
  * 数字キーで選択、Enter で回答・次へ。回答ボタンと結果は画面下の固定バー（AnswerBar）に出す。
+ * 精度の悪い問題は「取り下げ」でき、そのときは reserve（予備）から 1 問を最後に足す。
  */
-export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
+export function QuizSession({
+  quizzes: initial,
+  reserve: initialReserve = [],
+}: {
+  quizzes: QuizPublic[];
+  /** 取り下げたときに足す予備の問題（出題順） */
+  reserve?: QuizPublic[];
+}) {
   // 開くたびに選択肢の並びを変える（位置で正解を覚えないように）
   const prepare = (qs: QuizPublic[]) => qs.map((q) => ({ ...q, choices: shuffle(q.choices) }));
 
@@ -81,6 +93,12 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   const [comboBroken, setComboBroken] = useState(false);
   const [burst, setBurst] = useState(0);
   const comboRef = useRef(0);
+  const maxComboRef = useRef(0);
+  // 取り下げ
+  const [reserve, setReserve] = useState(initialReserve);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
+  const [withdrawn, setWithdrawn] = useState(0);
   // 開始時点で今日すでに解いていた数（まとめ画面の「今日の分クリア！」判定用）
   const [todayBefore, setTodayBefore] = useState<number | null>(null);
 
@@ -106,13 +124,19 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         confidence,
       });
       notifyAnswered();
-      const turn = scoreTurn(r.is_correct, confidence, comboRef.current);
+      const comboBefore = comboRef.current;
+      const maxComboBefore = maxComboRef.current;
+      const turn = scoreTurn(r.is_correct, confidence, comboBefore);
       comboRef.current = turn.combo;
+      maxComboRef.current = Math.max(maxComboBefore, turn.combo);
       setResult(r);
-      setAnswered((prev) => [...prev, { quiz, result: r, confidence, points: turn.points }]);
+      setAnswered((prev) => [
+        ...prev,
+        { quiz, result: r, confidence, points: turn.points, comboBefore, maxComboBefore },
+      ]);
       setScore((s) => s + turn.points);
       setCombo(turn.combo);
-      setMaxCombo((m) => Math.max(m, turn.combo));
+      setMaxCombo(maxComboRef.current);
       setComboBroken(turn.comboBroken);
       if (turn.combo >= 2 && r.is_correct && confidence === "sure") setComboPulse((n) => n + 1);
       // コンボの節目（5, 10, …）は紙吹雪と派手な音
@@ -135,13 +159,55 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
     setResult(null);
     setRevealed(false);
     setError(null);
+    setWithdrawing(false);
     setIndex((i) => i + 1);
     window.scrollTo({ top: 0 });
   }, []);
 
+  /**
+   * 今の問題を取り下げる。「問題がおかしい」に回し、このセッションから外して予備から 1 問足す。
+   * 解答後に取り下げたときは、その問題の得点・コンボをセッションの結果から外す
+   * （解答履歴は DB に残る）。
+   */
+  async function withdraw(reason: string) {
+    if (!quiz) return;
+    setWithdrawBusy(true);
+    setError(null);
+    try {
+      await apiPost(`/api/quizzes/${quiz.id}`, { fix_note: reason }, "PATCH");
+    } catch (e) {
+      setError((e as Error).message);
+      setWithdrawBusy(false);
+      return;
+    }
+    if (result && last && last.quiz.id === quiz.id) {
+      comboRef.current = last.comboBefore;
+      maxComboRef.current = last.maxComboBefore;
+      setAnswered((prev) => prev.slice(0, -1));
+      setScore((s) => s - last.points);
+      setCombo(last.comboBefore);
+      setMaxCombo(last.maxComboBefore);
+      setComboBroken(false);
+    }
+    const [replacement, ...rest] = reserve;
+    setReserve(rest);
+    setQuizzes((qs) => {
+      const without = qs.filter((_, i) => i !== index);
+      return replacement ? [...without, ...prepare([replacement])] : without;
+    });
+    // index はそのまま（次の問題が同じ位置に繰り上がる）
+    setSelected(null);
+    setResult(null);
+    setRevealed(false);
+    setWithdrawing(false);
+    setWithdrawBusy(false);
+    setWithdrawn((n) => n + 1);
+    window.scrollTo({ top: 0 });
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (done || !quiz || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (done || !quiz || withdrawing || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Enter") {
         e.preventDefault();
         if (result) next();
@@ -156,7 +222,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, quiz, result, hideChoices, next, submit]);
+  }, [done, quiz, result, hideChoices, withdrawing, next, submit]);
 
   async function appendToNote(snippet: string) {
     if (!quiz) return;
@@ -179,6 +245,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
     setMaxCombo(0);
     setComboBroken(false);
     comboRef.current = 0;
+    maxComboRef.current = 0;
     setIndex(0);
     setSelected(null);
     setResult(null);
@@ -186,6 +253,16 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
   }
 
   if (done) {
+    if (answered.length === 0) {
+      return (
+        <div className="card session-summary">
+          <p>出題できる問題がなくなりました（取り下げ {withdrawn} 問）。</p>
+          <p>
+            <Link href="/">ホームへ</Link>
+          </p>
+        </div>
+      );
+    }
     return (
       <SessionSummary
         answered={answered}
@@ -193,6 +270,7 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
         maxCombo={maxCombo}
         sound={sound}
         todayBefore={todayBefore}
+        withdrawn={withdrawn}
         onRetry={answered.some(needsRetry) ? retryWrong : undefined}
       />
     );
@@ -275,7 +353,24 @@ export function QuizSession({ quizzes: initial }: { quizzes: QuizPublic[] }) {
               </span>
             ))}
           </span>
+          {!withdrawing && (
+            <button
+              type="button"
+              className="withdraw-trigger"
+              onClick={() => setWithdrawing(true)}
+              title="精度の悪い問題を取り下げて、代わりの問題を足す"
+            >
+              取り下げる
+            </button>
+          )}
         </div>
+        {withdrawing && (
+          <WithdrawPanel
+            busy={withdrawBusy}
+            onWithdraw={(reason) => void withdraw(reason)}
+            onCancel={() => setWithdrawing(false)}
+          />
+        )}
         <div className="md-q">
           <ExplainPopover>
             <Markdown>{quiz.question}</Markdown>
