@@ -58,6 +58,17 @@ function fenceLanguage(question: string): string | undefined {
   return m?.[1];
 }
 
+/**
+ * 穴埋めの空所（____）の数。コードフェンスがあるときはその中だけを数える
+ * （問題文の説明で「空所 `____` に入るものは」と書いても 2 か所と数えないように）。
+ * コードフェンスが無い問題では問題文全体を数える。
+ */
+function countBlanks(question: string): number {
+  const fences = question.match(/```[\s\S]*?```/g);
+  const target = fences ? fences.join("\n") : question;
+  return (target.match(/_{4,}/g) ?? []).length;
+}
+
 export function lintQuiz(input: {
   question: string;
   choices: LintChoice[];
@@ -87,7 +98,7 @@ export function lintQuiz(input: {
   }
 
   // 2. 穴埋めの空所は 1 問につき 1 か所
-  const blanks = (input.question.match(/_{4,}/g) ?? []).length;
+  const blanks = countBlanks(input.question);
   if (blanks >= 2) {
     issues.push({
       rule: "multiple_blanks",
