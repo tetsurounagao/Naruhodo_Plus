@@ -1,6 +1,6 @@
 import { MASTERY_LABELS, masteryOf, nextStreak, type Mastery } from "../../lib/mastery";
-import { recommendedIntervalDays } from "../../lib/review-schedule";
-import type { Confidence } from "../../lib/types";
+import { daysBetween, nextInterval } from "../../lib/review-schedule";
+import type { AttemptConfidence, QuizPublic } from "../../lib/types";
 import { Bulb } from "./Bulb";
 
 export interface BulbChangeInfo {
@@ -14,18 +14,25 @@ export interface BulbChangeInfo {
   days: number;
 }
 
-/** 1 回の解答で なるほど電球 がどう変わるか（純関数。DB は見ない）。 */
+/** 解く前の問題の状態（電球の明るさと次の間隔の計算に使う）。 */
+export type ScheduleQuiz = Pick<QuizPublic, "correct_streak" | "interval_days" | "last_answered_at">;
+
+/**
+ * 1 回の解答で なるほど電球 と次の復習日数がどう変わるか（純関数。DB は見ない）。
+ * 次の日数はサーバーと同じ lib/review-schedule.ts で計算する（遅れて正解したぶんも評価、easy は 2 段階先）。
+ */
 export function bulbChangeOf(
-  prevStreak: number,
+  quiz: ScheduleQuiz,
   isCorrect: boolean,
-  confidence: Confidence,
+  confidence: AttemptConfidence,
 ): BulbChangeInfo {
-  const streak = nextStreak(prevStreak, isCorrect, confidence);
+  const streak = nextStreak(quiz.correct_streak, isCorrect, confidence === "easy" ? "sure" : confidence);
+  const elapsed = quiz.last_answered_at ? daysBetween(quiz.last_answered_at, Date.now()) : 0;
   return {
-    from: masteryOf(prevStreak),
+    from: masteryOf(quiz.correct_streak),
     to: masteryOf(streak),
     streak,
-    days: recommendedIntervalDays(streak),
+    days: nextInterval(quiz.interval_days, elapsed, isCorrect, confidence),
   };
 }
 
@@ -36,17 +43,17 @@ export function bulbChangeOf(
  * 変化なし:     新「ほんのり（次は 3 日後）」
  */
 export function BulbChange({
-  prevStreak,
+  quiz,
   isCorrect,
   confidence,
   size = 20,
 }: {
-  prevStreak: number;
+  quiz: ScheduleQuiz;
   isCorrect: boolean;
-  confidence: Confidence;
+  confidence: AttemptConfidence;
   size?: number;
 }) {
-  const c = bulbChangeOf(prevStreak, isCorrect, confidence);
+  const c = bulbChangeOf(quiz, isCorrect, confidence);
   const dir = c.to > c.from ? "up" : c.to < c.from ? "down" : "same";
   const text =
     dir === "up" ? "電球が明るくなった" : dir === "down" ? "電球が暗くなった" : MASTERY_LABELS[c.to];

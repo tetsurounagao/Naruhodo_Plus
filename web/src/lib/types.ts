@@ -31,8 +31,10 @@ export interface QuizPublic {
   created_at: string;
   attempt_count: number;
   last_correct: boolean | null;
-  /** 自信ありの連続正解回数（なるほど電球の明るさ・復習間隔の元） */
+  /** 自信ありの連続正解回数（なるほど電球の明るさの元） */
   correct_streak: number;
+  /** 今の復習間隔（日）。未解答は 0（lib/review-schedule.ts） */
+  interval_days: number;
   last_answered_at: string | null;
   star: number;
   note: string | null;
@@ -72,7 +74,12 @@ export interface SourceKnowledge {
 /** 解答時の自信度。unsure の正解は復習間隔の計算で連続正解に数えない。 */
 export type Confidence = "sure" | "unsure";
 
+/** DB に記録される自信度。easy は解答後に「簡単すぎた」を押したもの（自信ありの正解にだけ付く）。 */
+export type AttemptConfidence = Confidence | "easy";
+
 export interface AttemptResult {
+  /** 記録した解答の id（「簡単すぎた」を付けるため） */
+  attempt_id: string;
   is_correct: boolean;
   correct_answer: string;
   explanation: string | null;

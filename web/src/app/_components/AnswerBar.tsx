@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { MASTERY_LABELS } from "../../lib/mastery";
 import type { AttemptResult, Confidence } from "../../lib/types";
 import { AnswerButtons } from "./AnswerButtons";
-import { BulbChange, bulbChangeOf } from "./BulbChange";
+import { BulbChange, bulbChangeOf, type ScheduleQuiz } from "./BulbChange";
+import { EasyButton } from "./EasyButton";
 import { ResultLabel } from "./ResultLabel";
 
 type Props =
@@ -24,7 +25,10 @@ type Props =
       confidence: Confidence;
       points: number;
       /** 解答前の連続正解回数（電球の変化を出すため） */
-      prevStreak: number;
+      quiz: ScheduleQuiz;
+      /** 「簡単すぎた」を押したか */
+      easy: boolean;
+      onEasy: () => void;
       nextLabel: string;
       onNext: () => void;
     };
@@ -36,7 +40,7 @@ function toneOf(isCorrect: boolean, confidence: Confidence): "ok" | "unsure" | "
 
 /** 読み上げ用の結果の要約（画面ではスタンプ・電球で見せている内容）。 */
 function resultSummary(p: Extract<Props, { mode: "result" }>): string {
-  const c = bulbChangeOf(p.prevStreak, p.result.is_correct, p.confidence);
+  const c = bulbChangeOf(p.quiz, p.result.is_correct, p.easy ? "easy" : p.confidence);
   const head = !p.result.is_correct ? "不正解" : p.confidence === "unsure" ? "正解（あやふや）" : "正解";
   const pts = p.points > 0 ? `、${p.points} ポイント獲得` : "";
   const bulb =
@@ -101,10 +105,13 @@ export function AnswerBar(props: Props) {
                 note={false}
               />
               <BulbChange
-                prevStreak={props.prevStreak}
+                quiz={props.quiz}
                 isCorrect={props.result.is_correct}
-                confidence={props.confidence}
+                confidence={props.easy ? "easy" : props.confidence}
               />
+              {props.result.is_correct && props.confidence === "sure" && !props.easy && (
+                <EasyButton attemptId={props.result.attempt_id} onDone={props.onEasy} />
+              )}
               <button type="button" className="answer-bar-next" onClick={props.onNext}>
                 {props.nextLabel}
                 <span className="kbd">Enter</span>

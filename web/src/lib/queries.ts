@@ -1,7 +1,7 @@
 import "server-only";
 import { getSupabaseAdmin } from "./supabase/admin";
 import { weakTagThreshold } from "./env";
-import { reviewInfo } from "./review-schedule";
+import { daysBetween, nextInterval, reviewInfo } from "./review-schedule";
 import { NEW_PER_DAY, buildTerm, forgettingRisk, startOfLocalDay } from "./term";
 import { normalizeTags } from "./normalize-tags";
 import { masteryOf, type Mastery } from "./mastery";
@@ -16,6 +16,7 @@ import type {
   QuizSortKey,
   QuizStatusFilter,
   HiddenFilter,
+  AttemptConfidence,
   Confidence,
   ReviewItem,
   SourceKnowledge,
@@ -36,6 +37,10 @@ interface AttemptAgg {
   correctStreak: number;
   /** 初めて解いた日時（新しい問題の 1 日のデビュー数を数えるため） */
   firstAnsweredAt: string | null;
+  /** 今の復習間隔（日）。解答履歴を古い順に流して決める（lib/review-schedule.ts） */
+  interval: number;
+  /** 最後に解いた日時（次の解答までに空いた日数を出すため） */
+  lastAnsweredAt: string | null;
 }
 
 async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
@@ -49,7 +54,7 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
   ) as {
     quiz_id: string;
     is_correct: boolean;
-    confidence: Confidence | null;
+    confidence: AttemptConfidence | null;
     answered_at: string;
   }[];
 
@@ -60,7 +65,14 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
       lastCorrect: null,
       correctStreak: 0,
       firstAnsweredAt: r.answered_at,
+      interval: 0,
+      lastAnsweredAt: null,
     };
+    const elapsed = cur.lastAnsweredAt
+      ? daysBetween(cur.lastAnsweredAt, new Date(r.answered_at).getTime())
+      : 0;
+    cur.interval = nextInterval(cur.interval, elapsed, r.is_correct, r.confidence);
+    cur.lastAnsweredAt = r.answered_at;
     cur.count += 1;
     cur.lastCorrect = r.is_correct;
     // あやふやで正解（まぐれ当たりの可能性）は連続正解に数えず、早めに再出題する
@@ -97,7 +109,14 @@ function stripRationale(choices: QuizChoice[] | null | undefined): QuizChoice[] 
 }
 
 function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
-  const a = agg.get(row.id) ?? { count: 0, lastCorrect: null, correctStreak: 0, firstAnsweredAt: null };
+  const a = agg.get(row.id) ?? {
+    count: 0,
+    lastCorrect: null,
+    correctStreak: 0,
+    firstAnsweredAt: null,
+    interval: 0,
+    lastAnsweredAt: null,
+  };
   return {
     id: row.id,
     question: row.question,
@@ -108,6 +127,7 @@ function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
     attempt_count: a.count,
     last_correct: a.lastCorrect,
     correct_streak: a.correctStreak,
+    interval_days: a.interval,
     last_answered_at: row.last_answered_at ?? null,
     star: row.star ?? 0,
     note: row.note ?? null,
@@ -264,14 +284,14 @@ export async function gradeAndRecord(
   const isCorrect = userAnswer === quiz.correct_answer;
   const now = new Date().toISOString();
 
-  must(
+  const attempt = must(
     await supabase
       .from("quiz_attempts")
       .insert({ quiz_id: quizId, user_answer: userAnswer, is_correct: isCorrect, confidence })
       .select("id")
       .single(),
     "quiz_attempts 記録",
-  );
+  ) as { id: string };
   must(
     await supabase.from("quizzes").update({ last_answered_at: now }).eq("id", quizId).select("id").single(),
     "last_answered_at 更新",
@@ -283,12 +303,31 @@ export async function gradeAndRecord(
   }
 
   return {
+    attempt_id: attempt.id,
     is_correct: isCorrect,
     correct_answer: quiz.correct_answer,
     explanation: quiz.explanation,
     source_knowledge: quiz.knowledge_items ?? null,
     rationales,
   };
+}
+
+/**
+ * 「簡単すぎた」。自信ありで正解した解答を easy に変え、次の間隔を 2 段階先まで飛ばす（Anki の Easy）。
+ * 不正解・あやふやの解答には付けられない。
+ */
+export async function markAttemptEasy(attemptId: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const row = must(
+    await supabase.from("quiz_attempts").select("is_correct, confidence").eq("id", attemptId).maybeSingle(),
+    "quiz_attempts 取得",
+  ) as { is_correct: boolean; confidence: AttemptConfidence | null } | null;
+  if (!row) throw new Error("attempt not found");
+  if (!row.is_correct || row.confidence === "unsure") throw new Error("not a confident correct answer");
+  must(
+    await supabase.from("quiz_attempts").update({ confidence: "easy" }).eq("id", attemptId).select("id").single(),
+    "簡単すぎたの記録",
+  );
 }
 
 /** fix_note を保存用に正規化する。空・空白だけの指摘も「要修正」として残す。 */
@@ -793,7 +832,7 @@ export async function dueForReview(): Promise<ReviewItem[]> {
   const out: ReviewItem[] = [];
   for (const row of rows) {
     const base = toQuizPublic(row, agg);
-    const info = reviewInfo(base.last_answered_at, agg.get(base.id)?.correctStreak ?? 0);
+    const info = reviewInfo(base.last_answered_at, base.interval_days);
     if (!info || !info.due) continue;
     out.push({ ...base, days_since: info.daysSince, overdue_days: info.overdueDays });
   }
@@ -848,7 +887,7 @@ function composeTerm(
 
   const due: ReviewItem[] = [];
   for (const q of quizzes) {
-    const info = reviewInfo(q.last_answered_at, q.correct_streak);
+    const info = reviewInfo(q.last_answered_at, q.interval_days);
     if (info?.due) due.push({ ...q, days_since: info.daysSince, overdue_days: info.overdueDays });
   }
   // 新しい問題は作られた順（古いものから）
@@ -904,7 +943,7 @@ export async function homeSummary(tzOffsetMin = 0): Promise<HomeSummary> {
     unquizzed: unquizzed.length,
     quizTotal: quizzes.length,
     // dueForReview と同じ判定（最終回答からの経過日数 ≥ 連続正解回数に応じた間隔）
-    dueCount: quizzes.filter((q) => reviewInfo(q.last_answered_at, q.correct_streak)?.due).length,
+    dueCount: quizzes.filter((q) => reviewInfo(q.last_answered_at, q.interval_days)?.due).length,
     ...board,
   };
 }

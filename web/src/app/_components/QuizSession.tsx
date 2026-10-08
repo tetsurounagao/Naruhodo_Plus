@@ -6,6 +6,7 @@ import { apiGet, apiPost } from "../../lib/client";
 import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import { MASTERY_LABELS, masteryOf, nextStreak } from "../../lib/mastery";
+import { daysBetween, nextInterval } from "../../lib/review-schedule";
 import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
@@ -99,6 +100,8 @@ export function QuizSession({
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawn, setWithdrawn] = useState(0);
+  // 今の問題に「簡単すぎた」を付けたか
+  const [easy, setEasy] = useState(false);
   // 開始時点で今日すでに解いていた数（まとめ画面の「今日の分クリア！」判定用）
   const [todayBefore, setTodayBefore] = useState<number | null>(null);
 
@@ -160,6 +163,7 @@ export function QuizSession({
     setRevealed(false);
     setError(null);
     setWithdrawing(false);
+    setEasy(false);
     setIndex((i) => i + 1);
     window.scrollTo({ top: 0 });
   }, []);
@@ -201,6 +205,7 @@ export function QuizSession({
     setRevealed(false);
     setWithdrawing(false);
     setWithdrawBusy(false);
+    setEasy(false);
     setWithdrawn((n) => n + 1);
     window.scrollTo({ top: 0 });
   }
@@ -234,9 +239,17 @@ export function QuizSession({
 
   function retryWrong() {
     // 電球の段階が今回の解答のぶん変わっているので、連続正解回数を更新してから出し直す
+    const now = Date.now();
     const retry = answered.filter(needsRetry).map((a) => ({
       ...a.quiz,
       correct_streak: nextStreak(a.quiz.correct_streak, a.result.is_correct, a.confidence),
+      interval_days: nextInterval(
+        a.quiz.interval_days,
+        a.quiz.last_answered_at ? daysBetween(a.quiz.last_answered_at, now) : 0,
+        a.result.is_correct,
+        a.confidence,
+      ),
+      last_answered_at: new Date(now).toISOString(),
     }));
     setQuizzes(prepare(retry));
     setAnswered([]);
@@ -246,6 +259,7 @@ export function QuizSession({
     setComboBroken(false);
     comboRef.current = 0;
     maxComboRef.current = 0;
+    setEasy(false);
     setIndex(0);
     setSelected(null);
     setResult(null);
@@ -280,7 +294,7 @@ export function QuizSession({
 
   // 問題カードの電球: 解答後は新しい段階を出し、明るくなったら「明るくなった」を添える
   const change =
-    result && last ? bulbChangeOf(quiz.correct_streak, result.is_correct, last.confidence) : null;
+    result && last ? bulbChangeOf(quiz, result.is_correct, easy ? "easy" : last.confidence) : null;
   const level = change ? change.to : masteryOf(quiz.correct_streak);
   const brightened = !!change && change.to > change.from;
 
@@ -420,7 +434,9 @@ export function QuizSession({
           result={result}
           confidence={last.confidence}
           points={last.points}
-          prevStreak={quiz.correct_streak}
+          quiz={quiz}
+          easy={easy}
+          onEasy={() => setEasy(true)}
           nextLabel={index + 1 < quizzes.length ? "次へ" : "結果を見る"}
           onNext={next}
         />
