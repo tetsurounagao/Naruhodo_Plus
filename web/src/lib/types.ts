@@ -145,6 +145,19 @@ export interface MasteryGroup {
 
 /** /api/home のレスポンス。 */
 export interface HomeSummary {
+  /** 今日のターム（ホームには溜まっている総数ではなくこれを見せる） */
+  term: {
+    /** これから解く問題数（最大 1 ターム） */
+    size: number;
+    /** そのうち新しい問題 */
+    fresh: number;
+    /** そのうち復習 */
+    review: number;
+    /** 控え（明日以降に出す新しい問題）の数 */
+    waitingFresh: number;
+    /** このタームのあとにも復習が残っているか（「もう 1 ターム」を出すか） */
+    hasMore: boolean;
+  };
   stats: TagStat[];
   unanswered: number;
   unquizzed: number;

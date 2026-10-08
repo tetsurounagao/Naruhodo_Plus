@@ -428,3 +428,10 @@ main.container:has(> .home) {
 .home-accuracy li {
   margin: 4px 0;
 }
+
+/* 控えの新しい問題（今日のタームの下に小さく） */
+.today-waiting {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  padding: 0 4px;
+}

@@ -1,10 +1,12 @@
 "use client";
 
+import { TERM_SIZE } from "./term";
+
 /**
  * 1 日の目標問題数と「今日解いた数」の即時反映。
- * 目標は固定で 10 問（設定で変えられるようにする場合はここだけ変える）。
+ * 目標は 1 ターム分（lib/term.ts の TERM_SIZE）。
  */
-export const DAILY_GOAL = 10;
+export const DAILY_GOAL = TERM_SIZE;
 
 const EVENT = "naruhodo:answered";
 

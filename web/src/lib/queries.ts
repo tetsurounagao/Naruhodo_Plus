@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseAdmin } from "./supabase/admin";
 import { weakTagThreshold } from "./env";
 import { reviewInfo } from "./review-schedule";
+import { NEW_PER_DAY, buildTerm, forgettingRisk, startOfLocalDay } from "./term";
 import { normalizeTags } from "./normalize-tags";
 import { masteryOf, type Mastery } from "./mastery";
 import type {
@@ -33,6 +34,8 @@ interface AttemptAgg {
   lastCorrect: boolean | null;
   /** 直近から数えた「自信ありの」連続正解回数。直近が不正解・あやふやなら 0。 */
   correctStreak: number;
+  /** 初めて解いた日時（新しい問題の 1 日のデビュー数を数えるため） */
+  firstAnsweredAt: string | null;
 }
 
 async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
@@ -52,7 +55,12 @@ async function attemptAggByQuiz(): Promise<Map<string, AttemptAgg>> {
 
   const map = new Map<string, AttemptAgg>();
   for (const r of rows) {
-    const cur = map.get(r.quiz_id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
+    const cur = map.get(r.quiz_id) ?? {
+      count: 0,
+      lastCorrect: null,
+      correctStreak: 0,
+      firstAnsweredAt: r.answered_at,
+    };
     cur.count += 1;
     cur.lastCorrect = r.is_correct;
     // あやふやで正解（まぐれ当たりの可能性）は連続正解に数えず、早めに再出題する
@@ -89,7 +97,7 @@ function stripRationale(choices: QuizChoice[] | null | undefined): QuizChoice[] 
 }
 
 function toQuizPublic(row: any, agg: Map<string, AttemptAgg>): QuizPublic {
-  const a = agg.get(row.id) ?? { count: 0, lastCorrect: null, correctStreak: 0 };
+  const a = agg.get(row.id) ?? { count: 0, lastCorrect: null, correctStreak: 0, firstAnsweredAt: null };
   return {
     id: row.id,
     question: row.question,
@@ -789,8 +797,78 @@ export async function dueForReview(): Promise<ReviewItem[]> {
     if (!info || !info.due) continue;
     out.push({ ...base, days_since: info.daysSince, overdue_days: info.overdueDays });
   }
-  out.sort((a, b) => b.overdue_days - a.overdue_days);
-  return out;
+  return sortByForgettingRisk(out);
+}
+
+/**
+ * 忘れかけている順（経過日数 ÷ 本来の間隔 が大きい順。同じなら遅れの大きい順）。
+ * 本来の間隔 = 経過日数 − 遅れ日数。
+ */
+function sortByForgettingRisk(items: ReviewItem[]): ReviewItem[] {
+  const risk = (i: ReviewItem) => forgettingRisk(i.days_since, i.days_since - i.overdue_days);
+  return [...items].sort((a, b) => risk(b) - risk(a) || b.overdue_days - a.overdue_days);
+}
+
+/** 今日のターム。term がこれから解く問題、reserve は取り下げたときに足す予備。 */
+export interface TodayTerm {
+  term: QuizPublic[];
+  reserve: QuizPublic[];
+  /** term に入った新しい問題の数 */
+  freshInTerm: number;
+  /** 今日すでにデビューした新しい問題の数 */
+  debutsToday: number;
+  /** 控え（まだ出していない新しい問題）の数 */
+  waitingFresh: number;
+}
+
+/**
+ * 今日の 1 ターム（lib/term.ts）。復習は忘れかけている順、新しい問題は 1 日 NEW_PER_DAY 問まで。
+ * 「問題がおかしい」が付いた問題は出さない。tzOffsetMin は利用者の Date#getTimezoneOffset()。
+ */
+export async function todayTerm(tzOffsetMin: number): Promise<TodayTerm> {
+  const supabase = getSupabaseAdmin();
+  const [rowsRes, agg] = await Promise.all([
+    supabase.from("quizzes").select(QUIZ_SELECT).eq("hidden", false).is("fix_note", null),
+    attemptAggByQuiz(),
+  ]);
+  const quizzes = (must(rowsRes, "quizzes 取得") as any[]).map((r) => toQuizPublic(r, agg));
+  return composeTerm(quizzes, agg, tzOffsetMin);
+}
+
+function composeTerm(
+  quizzes: QuizPublic[],
+  agg: Map<string, AttemptAgg>,
+  tzOffsetMin: number,
+): TodayTerm {
+  const dayStart = startOfLocalDay(Date.now(), tzOffsetMin);
+  const debutsToday = quizzes.filter((q) => {
+    const first = agg.get(q.id)?.firstAnsweredAt;
+    return first ? new Date(first).getTime() >= dayStart : false;
+  }).length;
+
+  const due: ReviewItem[] = [];
+  for (const q of quizzes) {
+    const info = reviewInfo(q.last_answered_at, q.correct_streak);
+    if (info?.due) due.push({ ...q, days_since: info.daysSince, overdue_days: info.overdueDays });
+  }
+  // 新しい問題は作られた順（古いものから）
+  const fresh = quizzes
+    .filter((q) => q.attempt_count === 0)
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+
+  const newSlots = Math.max(0, NEW_PER_DAY - debutsToday);
+  const { term, reserve, freshCount } = buildTerm<QuizPublic>(
+    sortByForgettingRisk(due),
+    fresh,
+    newSlots,
+  );
+  return {
+    term,
+    reserve,
+    freshInTerm: freshCount,
+    debutsToday,
+    waitingFresh: fresh.length - freshCount,
+  };
 }
 
 /**
@@ -798,7 +876,7 @@ export async function dueForReview(): Promise<ReviewItem[]> {
  * 非表示でないクイズと解答集計は 1 回だけ取得し、未解答数・復習数・電球ボードをそこから数える
  * （listQuizzes / dueForReview をそれぞれ呼ぶと同じ取得が 2 回ずつ走るため）。AI 呼び出しはしない。
  */
-export async function homeSummary(): Promise<HomeSummary> {
+export async function homeSummary(tzOffsetMin = 0): Promise<HomeSummary> {
   const supabase = getSupabaseAdmin();
   const [stats, unquizzed, quizRes, agg] = await Promise.all([
     listTagStats(),
@@ -808,7 +886,19 @@ export async function homeSummary(): Promise<HomeSummary> {
   ]);
   const quizzes = (must(quizRes, "quizzes 取得") as any[]).map((r) => toQuizPublic(r, agg));
   const board = buildMasteryBoard(quizzes);
+  const t = composeTerm(
+    quizzes.filter((q) => q.fix_note === null),
+    agg,
+    tzOffsetMin,
+  );
   return {
+    term: {
+      size: t.term.length,
+      fresh: t.freshInTerm,
+      review: t.term.length - t.freshInTerm,
+      waitingFresh: t.waitingFresh,
+      hasMore: t.reserve.length > 0,
+    },
     stats,
     unanswered: quizzes.filter((q) => q.attempt_count === 0).length,
     unquizzed: unquizzed.length,

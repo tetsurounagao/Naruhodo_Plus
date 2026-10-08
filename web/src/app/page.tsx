@@ -12,9 +12,7 @@ import { MasteryBoard } from "./_components/MasteryBoard";
 import { batchQuizPrompt } from "../lib/quiz-prompts";
 import { countByLocalDate, localDateKey } from "../lib/streak";
 import { DAILY_GOAL } from "../lib/daily-goal";
-
-/** /play の 1 セッションの最大問題数（play/page.tsx の SESSION_SIZE と揃える）。 */
-const SESSION_SIZE = 10;
+import { NEW_PER_DAY } from "../lib/term";
 /** 要復習タグの付箋を何枚まで出すか。灯った知識のボードと高さがそろう枚数にする（残りは下の「タグ別の内訳と正答率」へ）。 */
 const WEAK_STICKY_MAX = 3;
 
@@ -25,7 +23,7 @@ export default function HomePage() {
   const [answerTs, setAnswerTs] = useState<string[] | null>(null);
 
   useEffect(() => {
-    apiGet<HomeSummary>("/api/home")
+    apiGet<HomeSummary>(`/api/home?tz=${new Date().getTimezoneOffset()}`)
       .then(setData)
       .catch((e: Error) => setError(e.message));
     apiGet<{ timestamps: string[] }>("/api/activity?kind=answers")
@@ -108,7 +106,10 @@ export default function HomePage() {
   );
 }
 
-/** 最上部の「今日やること」。今日の目標までの残り・始めるボタン・件数の内訳。 */
+/**
+ * 最上部の「今日やること」。溜まっている復習の総数は見せず、今日の 1 ターム（lib/term.ts）だけを出す。
+ * 目標（1 ターム）を解き終えたら「今日の分クリア！」と「もう 1 ターム」。
+ */
 function TodayCard({
   data,
   todayCount,
@@ -119,10 +120,9 @@ function TodayCard({
   todayCount: number | null;
   loading: boolean;
 }) {
-  const due = data?.dueCount ?? 0;
-  const unanswered = data?.unanswered ?? 0;
+  const term = data?.term;
   const unquizzed = data?.unquizzed ?? 0;
-  const hasTask = due > 0 || unanswered > 0;
+  const cleared = todayCount !== null && todayCount >= DAILY_GOAL;
 
   return (
     <section className="card taped home-today" aria-labelledby="home-today-title">
@@ -132,58 +132,49 @@ function TodayCard({
         </h1>
         <p className="today-goal">
           {todayCount === null ? (
-            " "
-          ) : todayCount < DAILY_GOAL ? (
+            " "
+          ) : !cleared ? (
             <>
               <span className="marker">あと {DAILY_GOAL - todayCount} 問</span>で今日の分クリア
             </>
           ) : (
             <>
               <span className="marker">今日の分クリア！</span>
-              {hasTask ? "余力があればもう少しどうぞ。" : "おつかれさまでした。"}
+              {term && term.size > 0 ? "物足りなければ、もう 1 タームどうぞ。" : "おつかれさまでした。"}
             </>
           )}
         </p>
-        {data === null ? (
+        {!term ? (
           loading && <p className="muted today-none">読み込み中…</p>
-        ) : hasTask ? (
+        ) : term.size > 0 ? (
           <div className="today-cta">
-            {due > 0 && (
-              <Link className="button-link" href="/play?mode=review">
-                今日の復習を始める（{Math.min(due, SESSION_SIZE)} 問）
-              </Link>
-            )}
-            {unanswered > 0 && (
-              <Link
-                className={due > 0 ? "button-link secondary" : "button-link"}
-                href="/play?mode=unanswered"
-              >
-                未解答を解く（{Math.min(unanswered, SESSION_SIZE)} 問）
-              </Link>
-            )}
+            <Link className={cleared ? "button-link secondary" : "button-link"} href="/play?mode=today">
+              {cleared ? "もう 1 ターム" : "今日のタームを始める"}（{term.size} 問）
+            </Link>
           </div>
         ) : (
           <p className="muted today-none">
-            今日やることはありません。<Link href="/quizzes">クイズ一覧</Link>
+            今日解く問題はもうありません。<Link href="/quizzes">クイズ一覧</Link>
             から好きな問題を解き直せます。
           </p>
         )}
       </div>
 
-      {data && (
+      {term && (
         <ul className="today-counts">
-          <li className={due > 0 ? "today-count due" : "today-count"}>
-            <span className="today-count-num">{due}</span>
-            <Link href="/review" className="today-count-label">
-              復習
-            </Link>
+          <li className={term.review > 0 ? "today-count due" : "today-count"}>
+            <span className="today-count-num">{term.review}</span>
+            <span className="today-count-label" title="忘れかけている順に出します">復習</span>
           </li>
           <li className="today-count unanswered">
-            <span className="today-count-num">{unanswered}</span>
-            <Link href="/quizzes" className="today-count-label">
-              未解答
-            </Link>
+            <span className="today-count-num">{term.fresh}</span>
+            <span className="today-count-label">新しい問題</span>
           </li>
+          {term.waitingFresh > 0 && (
+            <li className="today-waiting muted">
+              控えの新しい問題 {term.waitingFresh} 問は、1 日 {NEW_PER_DAY} 問ずつ出題します
+            </li>
+          )}
           {unquizzed > 0 && (
             <li className="today-count unquizzed">
               <span className="today-count-num">{unquizzed}</span>
