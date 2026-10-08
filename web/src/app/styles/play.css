@@ -987,3 +987,18 @@ div.picked-rationale {
   font-weight: 500;
   color: var(--muted);
 }
+
+/* ---- 「簡単すぎた」 ---- */
+.easy-button {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ok-strong);
+  background: var(--card);
+  border: 2px solid var(--ok);
+  border-radius: 999px;
+  box-shadow: 0 2px 0 var(--ok);
+}
+.easy-button:not(:disabled):hover {
+  background: var(--ok-weak);
+}

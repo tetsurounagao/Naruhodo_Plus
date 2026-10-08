@@ -15,6 +15,7 @@ import { ChoiceTiles } from "./ChoiceTiles";
 import { AnswerButtons } from "./AnswerButtons";
 import { ResultLabel } from "./ResultLabel";
 import { BulbChange } from "./BulbChange";
+import { EasyButton } from "./EasyButton";
 import { ChoiceRationales, PickedRationale } from "./ChoiceRationales";
 
 /**
@@ -40,6 +41,8 @@ export function QuizRunner({
   const [selected, setSelected] = useState<string | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [confidence, setConfidence] = useState<Confidence>("sure");
+  // 「簡単すぎた」を付けたか
+  const [easy, setEasy] = useState(false);
   const sound = useSoundOn();
   const [busy, setBusy] = useState(false);
   const recallFirst = useRecallFirst();
@@ -117,11 +120,14 @@ export function QuizRunner({
           >
             <ResultLabel isCorrect={result.is_correct} confidence={confidence} />
             <BulbChange
-              prevStreak={quiz.correct_streak}
+              quiz={quiz}
               isCorrect={result.is_correct}
-              confidence={confidence}
+              confidence={easy ? "easy" : confidence}
               size={18}
             />
+            {result.is_correct && confidence === "sure" && !easy && (
+              <EasyButton attemptId={result.attempt_id} onDone={() => setEasy(true)} />
+            )}
           </div>
           <PickedRationale choices={quiz.choices} selected={selected} result={result} />
           {result.explanation && (

@@ -48,6 +48,8 @@ export default function HomePage() {
 
       <TodayCard data={data} todayCount={todayCount} loading={data === null && !error} />
 
+      {data && <BacklogCard data={data} />}
+
       <section className="card home-board">
         {data === null ? (
           <>
@@ -187,6 +189,44 @@ function TodayCard({
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * 実際に溜まっている復習の数。ふだんは閉じておき、押したときだけ見せる
+ * （総数が常に見えると気が重くなるので、ホームの主役は今日のタームにしている）。
+ */
+function BacklogCard({ data }: { data: HomeSummary }) {
+  const due = data.dueCount;
+  const waiting = data.term.waitingFresh;
+  const days = Math.ceil(due / DAILY_GOAL);
+  return (
+    <details className="card home-backlog">
+      <summary>実際の復習の数を見る</summary>
+      <ul className="backlog-stats">
+        <li>
+          <span className="backlog-num">{due}</span>
+          <span className="backlog-label">復習期限が来ている問題</span>
+        </li>
+        <li>
+          <span className="backlog-num">{waiting}</span>
+          <span className="backlog-label">控えの新しい問題（1 日 {NEW_PER_DAY} 問ずつ）</span>
+        </li>
+        <li>
+          <span className="backlog-num">{days}</span>
+          <span className="backlog-label">1 日 1 ターム（{DAILY_GOAL} 問）で消化すると、約 {days} 日</span>
+        </li>
+      </ul>
+      <p className="muted backlog-note">
+        正解するほど次に出るまでの間隔が延びるので、実際にはこれより早く減っていきます。
+        {due > 0 && (
+          <>
+            {" "}
+            <Link href="/review">一覧を見る</Link>
+          </>
+        )}
+      </p>
+    </details>
   );
 }
 

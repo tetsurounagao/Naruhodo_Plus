@@ -69,7 +69,7 @@ function writeBest(b: Best): void {
 /** このセッションで なるほど電球 が明るくなった（段階が上がった）問題の数。 */
 function countBrightened(answered: Answered[]): number {
   return answered.filter((a) => {
-    const c = bulbChangeOf(a.quiz.correct_streak, a.result.is_correct, a.confidence);
+    const c = bulbChangeOf(a.quiz, a.result.is_correct, a.confidence);
     return c.to > c.from;
   }).length;
 }

@@ -435,3 +435,44 @@ main.container:has(> .home) {
   line-height: 1.5;
   padding: 0 4px;
 }
+
+/* 実際の復習の数（押したときだけ開く） */
+.home-backlog {
+  grid-column: 1 / -1;
+  padding: 12px 22px;
+}
+.home-backlog summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--muted);
+}
+.backlog-stats {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 6px;
+  padding: 0;
+}
+.backlog-stats li {
+  flex: 1;
+  min-width: 12em;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.backlog-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.backlog-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.backlog-note {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+}
