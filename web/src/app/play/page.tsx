@@ -16,6 +16,12 @@ function leastPracticedFirst(a: QuizPublic, b: QuizPublic): number {
   return (a.last_answered_at ?? "").localeCompare(b.last_answered_at ?? "");
 }
 
+/** 今日の 1 ターム（サーバーが復習の順番と新しい問題の上限を決めて返す）。 */
+async function loadToday(): Promise<{ term: QuizPublic[]; reserve: QuizPublic[] }> {
+  const tz = new Date().getTimezoneOffset();
+  return apiGet<{ term: QuizPublic[]; reserve: QuizPublic[] }>(`/api/today?tz=${tz}`);
+}
+
 async function loadQuizzes(mode: string | null, tag: string | null): Promise<QuizPublic[]> {
   if (tag) {
     const p = new URLSearchParams({ tags: tag });
@@ -35,6 +41,7 @@ async function loadQuizzes(mode: string | null, tag: string | null): Promise<Qui
 
 function titleOf(mode: string | null, tag: string | null): string {
   if (tag) return `タグ「${tag}」を解く`;
+  if (mode === "today") return "今日のターム";
   if (mode === "unanswered") return "未解答の問題を解く";
   return "今日の復習";
 }
@@ -50,6 +57,15 @@ function Play() {
 
   useEffect(() => {
     setQuizzes(null);
+    if (mode === "today" && !tag) {
+      loadToday()
+        .then((r) => {
+          setQuizzes(r.term);
+          setReserve(r.reserve);
+        })
+        .catch((e: Error) => setError(e.message));
+      return;
+    }
     loadQuizzes(mode, tag)
       .then((qs) => {
         // 「問題がおかしい」（要修正）が付いた問題は、直るまで出題しない
@@ -71,7 +87,10 @@ function Play() {
         !error && <p className="muted">読み込み中…</p>
       ) : quizzes.length === 0 ? (
         <p className="muted">
-          出題できる問題がありません。<Link href="/">ホームへ</Link>
+          {mode === "today" && !tag
+            ? "今日解く問題はもうありません。また明日！"
+            : "出題できる問題がありません。"}
+          <Link href="/">ホームへ</Link>
         </p>
       ) : (
         // 選択肢を隠す・効果音の切り替えとキー操作の説明は、上部バーの設定ボタンにまとめた
