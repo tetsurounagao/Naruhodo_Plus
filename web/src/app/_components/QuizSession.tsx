@@ -67,10 +67,16 @@ function isTyping(target: EventTarget | null): boolean {
 export function QuizSession({
   quizzes: initial,
   reserve: initialReserve = [],
+  reserveFresh: initialReserveFresh = [],
 }: {
   quizzes: QuizPublic[];
   /** 取り下げたときに足す予備の問題（出題順） */
   reserve?: QuizPublic[];
+  /**
+   * 新しい問題の予備（今日のタームのみ）。解く前に新しい問題を取り下げたらここから足し、
+   * タームの「新しい問題 N 問」を保つ（解く前の取り下げは 1 日の枠を使わないため）。
+   */
+  reserveFresh?: QuizPublic[];
 }) {
   // 開くたびに選択肢の並びを変える（位置で正解を覚えないように）
   const prepare = (qs: QuizPublic[]) => qs.map((q) => ({ ...q, choices: shuffle(q.choices) }));
@@ -97,6 +103,7 @@ export function QuizSession({
   const maxComboRef = useRef(0);
   // 取り下げ
   const [reserve, setReserve] = useState(initialReserve);
+  const [reserveFresh, setReserveFresh] = useState(initialReserveFresh);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawn, setWithdrawn] = useState(0);
@@ -193,8 +200,18 @@ export function QuizSession({
       setMaxCombo(last.maxComboBefore);
       setComboBroken(false);
     }
-    const [replacement, ...rest] = reserve;
-    setReserve(rest);
+    // 解く前に取り下げた新しい問題 → 新しい問題の予備から。それ以外（復習・解いた後）→ 復習の予備から。
+    // 片方が尽きたらもう片方から足す
+    const freshFirst = !result && quiz.attempt_count === 0;
+    const primary = freshFirst ? reserveFresh : reserve;
+    const secondary = freshFirst ? reserve : reserveFresh;
+    const fromPrimary = primary.length > 0;
+    const replacement = fromPrimary ? primary[0] : secondary[0];
+    if (replacement) {
+      const takeFresh = fromPrimary === freshFirst;
+      if (takeFresh) setReserveFresh((r) => r.slice(1));
+      else setReserve((r) => r.slice(1));
+    }
     setQuizzes((qs) => {
       const without = qs.filter((_, i) => i !== index);
       return replacement ? [...without, ...prepare([replacement])] : without;

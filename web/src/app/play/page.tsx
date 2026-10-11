@@ -17,9 +17,13 @@ function leastPracticedFirst(a: QuizPublic, b: QuizPublic): number {
 }
 
 /** 今日の 1 ターム（サーバーが復習の順番と新しい問題の上限を決めて返す）。 */
-async function loadToday(): Promise<{ term: QuizPublic[]; reserve: QuizPublic[] }> {
+async function loadToday(): Promise<{
+  term: QuizPublic[];
+  reserve: QuizPublic[];
+  reserveFresh: QuizPublic[];
+}> {
   const tz = new Date().getTimezoneOffset();
-  return apiGet<{ term: QuizPublic[]; reserve: QuizPublic[] }>(`/api/today?tz=${tz}`);
+  return apiGet(`/api/today?tz=${tz}`);
 }
 
 async function loadQuizzes(mode: string | null, tag: string | null): Promise<QuizPublic[]> {
@@ -42,7 +46,7 @@ async function loadQuizzes(mode: string | null, tag: string | null): Promise<Qui
 function titleOf(mode: string | null, tag: string | null): string {
   if (tag) return `タグ「${tag}」を解く`;
   if (mode === "today") return "今日のターム";
-  if (mode === "unanswered") return "未解答の問題を解く";
+  if (mode === "unanswered") return "新しい問題を解く";
   return "今日の復習";
 }
 
@@ -53,6 +57,7 @@ function Play() {
   const [quizzes, setQuizzes] = useState<QuizPublic[] | null>(null);
   // 取り下げたときに足す予備（11 問目以降）
   const [reserve, setReserve] = useState<QuizPublic[]>([]);
+  const [reserveFresh, setReserveFresh] = useState<QuizPublic[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +67,7 @@ function Play() {
         .then((r) => {
           setQuizzes(r.term);
           setReserve(r.reserve);
+          setReserveFresh(r.reserveFresh);
         })
         .catch((e: Error) => setError(e.message));
       return;
@@ -94,7 +100,12 @@ function Play() {
         </p>
       ) : (
         // 選択肢を隠す・効果音の切り替えとキー操作の説明は、上部バーの設定ボタンにまとめた
-        <QuizSession key={`${mode}-${tag}`} quizzes={quizzes} reserve={reserve} />
+        <QuizSession
+            key={`${mode}-${tag}`}
+            quizzes={quizzes}
+            reserve={reserve}
+            reserveFresh={reserveFresh}
+          />
       )}
     </>
   );
