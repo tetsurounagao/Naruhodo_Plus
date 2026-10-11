@@ -848,10 +848,16 @@ function sortByForgettingRisk(items: ReviewItem[]): ReviewItem[] {
   return [...items].sort((a, b) => risk(b) - risk(a) || b.overdue_days - a.overdue_days);
 }
 
-/** 今日のターム。term がこれから解く問題、reserve は取り下げたときに足す予備。 */
+/**
+ * 今日のターム。term がこれから解く問題。
+ * reserve / reserveFresh は取り下げたときに足す予備（復習の予備と新しい問題の予備）。
+ * 解く前に新しい問題を取り下げたら新しい問題の予備から足し、タームの「新しい問題 N 問」を保つ。
+ */
 export interface TodayTerm {
   term: QuizPublic[];
   reserve: QuizPublic[];
+  /** 新しい問題の予備（今日の枠に入らなかった未解答。出したい順） */
+  reserveFresh: QuizPublic[];
   /** term に入った新しい問題の数 */
   freshInTerm: number;
   /** 今日すでにデビューした新しい問題の数 */
@@ -904,6 +910,7 @@ function composeTerm(
   return {
     term,
     reserve,
+    reserveFresh: fresh.slice(freshCount),
     freshInTerm: freshCount,
     debutsToday,
     waitingFresh: fresh.length - freshCount,

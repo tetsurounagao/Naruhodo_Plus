@@ -125,6 +125,8 @@ function TodayCard({
   const term = data?.term;
   const unquizzed = data?.unquizzed ?? 0;
   const cleared = todayCount !== null && todayCount >= DAILY_GOAL;
+  // 出題できる新しい問題の総数（今日のタームに入った分＋控え。「問題がおかしい」は除く）
+  const freshAll = term ? term.fresh + term.waitingFresh : 0;
 
   return (
     <section className="card taped home-today" aria-labelledby="home-today-title">
@@ -148,11 +150,22 @@ function TodayCard({
         </p>
         {!term ? (
           loading && <p className="muted today-none">読み込み中…</p>
-        ) : term.size > 0 ? (
+        ) : term.size > 0 || freshAll > 0 ? (
           <div className="today-cta">
-            <Link className={cleared ? "button-link secondary" : "button-link"} href="/play?mode=today">
-              {cleared ? "もう 1 ターム" : "今日のタームを始める"}（{term.size} 問）
-            </Link>
+            {term.size > 0 && (
+              <Link className={cleared ? "button-link secondary" : "button-link"} href="/play?mode=today">
+                {cleared ? "もう 1 ターム" : "今日のタームを始める"}（{term.size} 問）
+              </Link>
+            )}
+            {freshAll > 0 && (
+              <Link
+                className={term.size > 0 ? "button-link secondary" : "button-link"}
+                href="/play?mode=unanswered"
+                title={`1 日 ${NEW_PER_DAY} 問の枠とは別に解けます（解いた分は復習に回ってきます）`}
+              >
+                新しい問題だけ解く（{Math.min(freshAll, DAILY_GOAL)} 問）
+              </Link>
+            )}
           </div>
         ) : (
           <p className="muted today-none">
