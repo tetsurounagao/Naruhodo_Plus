@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { countByLocalDate, currentStreak, localDateKey } from "../../lib/streak";
 import { DAILY_GOAL, onAnswered } from "../../lib/daily-goal";
+import { StyleToggle } from "./StyleToggle";
 
 const LINKS: [string, string][] = [
   ["/", "ホーム"],
@@ -104,6 +105,7 @@ export function SiteHeader() {
           </span>
         </div>
       )}
+      <StyleToggle />
       <button className="site-logout" onClick={logout}>
         ログアウト
       </button>

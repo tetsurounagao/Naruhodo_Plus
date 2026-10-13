@@ -7,7 +7,8 @@ import { countByLocalDate, currentStreak, localDateKey as dateKey } from "../../
 
 const WEEKS = 26;
 /** 0=なし → 濃い緑（GitHub の草と同じ 5 段階）。 */
-const LEVELS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
+// 色は globals.css の --cal-0〜4（スタイル切り替えで差し替えられるように変数にしている）
+const LEVELS = ["var(--cal-0)", "var(--cal-1)", "var(--cal-2)", "var(--cal-3)", "var(--cal-4)"];
 /** 月ラベル同士・月ラベルと左端の間に空ける最小の列数（これ未満だと文字が重なる）。 */
 const MONTH_LABEL_MIN_GAP = 3;
 
