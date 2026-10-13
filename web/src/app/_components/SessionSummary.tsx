@@ -220,6 +220,10 @@ export function SessionSummary({
         <Link className={onRetry ? "button-link secondary" : "button-link"} href="/">
           ホームへ
         </Link>
+        {/* 貯めたポイントは神殿の木に捧げられる（#93） */}
+        <Link className="button-link secondary" href="/temple">
+          神殿で木に捧げる
+        </Link>
       </p>
     </div>
   );

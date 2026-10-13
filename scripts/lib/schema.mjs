@@ -14,6 +14,8 @@ export const DATA_TABLES = [
   "quiz_attempts",
   "quiz_links",
   "term_lookups",
+  "point_earnings",
+  "tree_offerings",
 ];
 
 /** 台帳。バックアップには入れるが復元対象外（スキーマは db:migrate が管理）。 */

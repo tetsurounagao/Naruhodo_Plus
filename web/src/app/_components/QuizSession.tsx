@@ -149,6 +149,12 @@ export function QuizSession({
       const jackpotHit = solid && turn.combo === JACKPOT_COMBO;
       // 大当たりのボーナスはこの問題の得点に足す（解いた後に取り下げたら一緒に外れる）
       if (jackpotHit) turn.points += JACKPOT_BONUS;
+      // 貯めたポイントは神殿の木に捧げられる（#93）。記録に失敗しても解答の流れは止めない
+      if (turn.points > 0) {
+        apiPost("/api/points", { attempt_id: r.attempt_id, points: turn.points }).catch((e: Error) =>
+          console.warn("[points] 記録に失敗:", e.message),
+        );
+      }
       comboRef.current = turn.combo;
       maxComboRef.current = Math.max(maxComboBefore, turn.combo);
       setResult(r);
@@ -217,6 +223,11 @@ export function QuizSession({
       maxComboRef.current = last.maxComboBefore;
       setAnswered((prev) => prev.slice(0, -1));
       setScore((s) => s - last.points);
+      if (last.points > 0) {
+        apiPost(`/api/points/${last.result.attempt_id}`, null, "DELETE").catch((e: Error) =>
+          console.warn("[points] 取り消しに失敗:", e.message),
+        );
+      }
       setCombo(last.comboBefore);
       setMaxCombo(last.maxComboBefore);
       setComboBroken(false);

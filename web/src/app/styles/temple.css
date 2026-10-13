@@ -1,0 +1,389 @@
+/* 神殿（#93）。スタイル切り替えに関係なく、いつも初代プレステ風。
+   画面いっぱいに 3D を出し、その上に HUD・ボタン・スティックを重ねる。 */
+.temple {
+  --tp-hi: #9aa6d8;
+  --tp-lo: #10142a;
+  --tp-gold: #ffd36b;
+  --tp-text: #e6eaf4;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #07060f;
+  color: var(--tp-text);
+  font-family: var(--font-dot), var(--font-ud), monospace;
+  letter-spacing: 0.04em;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.temple-view {
+  position: absolute;
+  inset: 0;
+}
+/* 低い解像度で描いた絵を、ぼかさずに拡大する */
+.temple-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+/* 走査線 */
+.temple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+}
+.temple-fallback {
+  position: absolute;
+  inset: 40% 16px auto;
+  text-align: center;
+}
+
+/* ---- 部品: ウィンドウ・ボタン ---- */
+.tp-win {
+  background: linear-gradient(180deg, rgba(64, 76, 120, 0.88), rgba(24, 30, 62, 0.92));
+  border: 2px solid;
+  border-color: var(--tp-hi) var(--tp-lo) var(--tp-lo) var(--tp-hi);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  text-shadow: 2px 2px 0 #000;
+}
+.temple .tp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 20px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--tp-text);
+  text-decoration: none;
+  text-shadow: 2px 2px 0 #000;
+  background: linear-gradient(180deg, #46528c, #252c55);
+  border: 2px solid;
+  border-color: var(--tp-hi) var(--tp-lo) var(--tp-lo) var(--tp-hi);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #000;
+  cursor: pointer;
+}
+.temple .tp-btn:hover {
+  color: #fff;
+  background: linear-gradient(180deg, #56649e, #2e3664);
+}
+.temple .tp-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #000;
+}
+.temple .tp-btn:focus-visible,
+.temple .temple-option:focus-visible {
+  outline: 3px solid var(--tp-gold);
+  outline-offset: 2px;
+}
+.temple .tp-gold {
+  color: #07080d;
+  text-shadow: none;
+  background: linear-gradient(180deg, #ffe7a8, #ffc23d);
+  border-color: #fff4d1 #8a5a00 #8a5a00 #fff4d1;
+}
+.temple .tp-gold:hover {
+  color: #07080d;
+  background: linear-gradient(180deg, #fff0c4, #ffcb55);
+}
+.tp-key {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  opacity: 0.8;
+}
+.tp-label {
+  color: #7fdcff;
+  font-size: 0.85rem;
+  min-width: 2.5em;
+}
+.tp-num {
+  font-size: 1.35rem;
+  color: #fff;
+}
+.tp-unit {
+  font-size: 0.85rem;
+  color: #a3aedb;
+}
+.tp-max {
+  font-size: 0.8rem;
+  color: #07080d;
+  background: var(--tp-gold);
+  padding: 0 6px;
+  text-shadow: none;
+}
+
+/* ---- HUD ---- */
+.temple-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+.temple-hud > * {
+  pointer-events: auto;
+}
+.temple-status {
+  padding: 10px 16px 12px;
+  min-width: 210px;
+}
+.temple-status-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.temple-exp {
+  margin-top: 8px;
+}
+.temple-exp-bar {
+  height: 10px;
+  background: #04050a;
+  border: 2px solid;
+  border-color: var(--tp-lo) var(--tp-hi) var(--tp-hi) var(--tp-lo);
+}
+.temple-exp-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(180deg, #c9ff9a, #5fd23a 50%, #22901c 51%, #6fe04a);
+  transition: width 0.8s;
+}
+.temple-exp-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #c6cce6;
+}
+.temple-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 0.8rem;
+  color: #a3aedb;
+  text-shadow: 2px 2px 0 #000;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.temple-hint-touch {
+  display: none;
+}
+.temple-error {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  color: #ffb4b4;
+}
+
+/* ---- 木の近くで出るボタン ---- */
+.temple-action {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  animation: tp-pop 0.25s steps(3);
+}
+.temple-action .tp-btn {
+  font-size: 1.15rem;
+  padding: 10px 26px;
+  min-height: 54px;
+}
+.temple-note {
+  margin: 0;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+@keyframes tp-pop {
+  from {
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+
+/* ---- 捧げる画面 ---- */
+.temple-panel-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.temple-panel {
+  width: min(420px, 100%);
+  padding: 18px 20px 20px;
+}
+.temple-panel-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--tp-gold);
+}
+.temple-panel-desc {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: #c6cce6;
+}
+.temple-options {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* 選択肢は ▶ カーソルで選ぶメニュー */
+.temple .temple-option {
+  position: relative;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px 8px 34px;
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  color: var(--tp-text);
+  text-shadow: 2px 2px 0 #000;
+  background: rgba(10, 12, 28, 0.55);
+  border: 2px solid;
+  border-color: #5d6799 var(--tp-lo) var(--tp-lo) #5d6799;
+  border-radius: 0;
+  cursor: pointer;
+}
+.temple .temple-option:hover,
+.temple .temple-option:focus-visible {
+  background: linear-gradient(90deg, rgba(255, 211, 107, 0.32), rgba(255, 211, 107, 0.05));
+  border-color: #ffe7a8 #7a5a10 #7a5a10 #ffe7a8;
+}
+.temple .temple-option:hover::before,
+.temple .temple-option:focus-visible::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  margin-top: -6px;
+  border-left: 11px solid var(--tp-gold);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  animation: tp-blink 1s steps(1) infinite;
+}
+.temple .temple-option:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+@keyframes tp-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---- LEVEL UP ---- */
+.temple-levelup {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  animation: tp-levelup 2.8s steps(14) forwards;
+}
+.temple-levelup-title {
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  color: var(--tp-gold);
+  text-shadow:
+    3px 3px 0 #7a4a00,
+    6px 6px 0 #000;
+}
+.temple-levelup-sub {
+  font-size: 1.2rem;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+}
+@keyframes tp-levelup {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  15%,
+  80% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* ---- スマホのスティック（指で操作する端末だけ） ---- */
+.temple-stick {
+  display: none;
+  position: absolute;
+  right: 24px;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(40, 48, 96, 0.55) 0 60%, rgba(154, 166, 216, 0.35) 61% 64%, rgba(20, 24, 52, 0.55) 65%);
+  border: 2px solid rgba(154, 166, 216, 0.7);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  touch-action: none;
+}
+.temple-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c8d0f0 0 15%, #6a76b0 45%, #2a3260 100%);
+  border: 2px solid #9aa6d8;
+  box-shadow: 3px 3px 0 #000;
+}
+@media (hover: none) and (pointer: coarse) {
+  .temple-stick {
+    display: block;
+  }
+  .temple-hint-pc {
+    display: none;
+  }
+  .temple-hint-touch {
+    display: inline;
+  }
+  /* スティックと重ならないよう、ボタンは少し左上に */
+  .temple-action {
+    bottom: 180px;
+  }
+  .temple-hint {
+    left: 16px;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .temple-option::before,
+  .temple-action {
+    animation: none;
+  }
+}
+
+/* 見出しの頭の記号（いつもの「＋」・プレステの「▼」）は付けない（見出しの文字に ▼ を含めている） */
+.temple .temple-panel-title::before {
+  content: none;
+}

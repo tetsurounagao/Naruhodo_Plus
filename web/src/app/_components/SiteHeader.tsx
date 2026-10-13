@@ -14,6 +14,7 @@ const LINKS: [string, string][] = [
   ["/knowledge", "学び"],
   ["/tags", "タグ"],
   ["/search", "検索"],
+  ["/temple", "神殿"],
   ["/setup", "セットアップ"],
 ];
 
