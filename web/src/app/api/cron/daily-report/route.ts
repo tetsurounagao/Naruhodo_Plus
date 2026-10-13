@@ -3,7 +3,7 @@ import { HttpError } from "../../../../lib/auth";
 import { env } from "../../../../lib/env";
 import { handle, ok } from "../../../../lib/http";
 import { formatReport } from "../../../../lib/daily-report";
-import { collectDailyReport, postToSlack } from "../../../../lib/daily-report-server";
+import { collectDailyReport, isWorkflowWebhook, postToSlack } from "../../../../lib/daily-report-server";
 
 /**
  * 毎日の成果を Slack に送る（#95）。Vercel Cron が 22 時ごろ（JST）に呼ぶ（web/vercel.json）。
@@ -23,12 +23,12 @@ function authorize(req: Request) {
 export const GET = handle(async (req) => {
   authorize(req);
   const url = new URL(req.url);
+  const webhook = env.slackWebhookUrl;
   const report = await collectDailyReport();
-  const text = formatReport({ ...report, appUrl: url.origin });
+  const text = formatReport({ ...report, appUrl: url.origin }, isWorkflowWebhook(webhook));
 
   if (url.searchParams.get("dry") === "1") return ok({ sent: false, reason: "dry", text });
   if (report.answered === 0) return ok({ sent: false, reason: "no_activity" });
-  const webhook = env.slackWebhookUrl;
   if (!webhook) throw new HttpError(503, "SLACK_WEBHOOK_URL が未設定です");
   await postToSlack(webhook, text);
   return ok({ sent: true });

@@ -69,13 +69,17 @@ export interface DailyReport {
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
-/** Slack の mrkdwn にする。 */
-export function formatReport(r: DailyReport): string {
+/**
+ * Slack に送る本文にする。plain = false なら mrkdwn（太字・リンク記法）。
+ * ワークフロービルダーの Webhook は変数に入れた記法をそのまま表示することがあるので、plain = true で記号を使わない。
+ */
+export function formatReport(r: DailyReport, plain = false): string {
   const [, m, d] = r.date.split("-").map(Number);
-  const lines = [`*📚 なるほど+ 今日の成果（${m}/${d}）*`];
+  const b = (s: string) => (plain ? s : `*${s}*`);
+  const lines = [b(`📚 なるほど+ 今日の成果（${m}/${d}）`)];
   const rate = r.answered > 0 ? r.correct / r.answered : 0;
-  lines.push(`解いた問題: *${r.answered} 問*　正答率 ${pct(rate)}（自信ありで正解 ${r.sureCorrect}）`);
-  lines.push(`獲得ポイント: *+${r.points.toLocaleString()} pt*　最長コンボ ${r.combo}${r.combo >= 10 ? " 🎰" : ""}`);
+  lines.push(`解いた問題: ${b(`${r.answered} 問`)}　正答率 ${pct(rate)}（自信ありで正解 ${r.sureCorrect}）`);
+  lines.push(`獲得ポイント: ${b(`+${r.points.toLocaleString()} pt`)}　最長コンボ ${r.combo}${r.combo >= 10 ? " 🎰" : ""}`);
   if (r.streak >= 2) lines.push(`連続学習: 🔥 ${r.streak} 日`);
   if (r.newKnowledge > 0) {
     const tags = r.newTags.slice(0, 5).map((t) => `#${t}`).join(" ");
@@ -90,6 +94,6 @@ export function formatReport(r: DailyReport): string {
       : `神殿の木: Lv ${r.tree.level}（次まで ${r.tree.toNext.toLocaleString()} pt）`) +
       `　所持 ${r.tree.balance.toLocaleString()} pt`,
   );
-  if (r.appUrl) lines.push(`<${r.appUrl}|アプリを開く>`);
+  if (r.appUrl) lines.push(plain ? r.appUrl : `<${r.appUrl}|アプリを開く>`);
   return lines.join("\n");
 }

@@ -81,12 +81,22 @@ export async function collectDailyReport(now = new Date()): Promise<DailyReport>
   };
 }
 
-/** Slack の Incoming Webhook に送る。 */
+/**
+ * ワークフロービルダーの Webhook（https://hooks.slack.com/triggers/...）か。
+ * アプリを入れられないワークスペース向け。ワークフロー側で `text` という変数を作っておく。
+ */
+export function isWorkflowWebhook(webhookUrl: string): boolean {
+  return /^https:\/\/hooks\.slack\.com\/triggers\//.test(webhookUrl);
+}
+
+/** Slack の Incoming Webhook / ワークフローの Webhook に送る。 */
 export async function postToSlack(webhookUrl: string, text: string): Promise<void> {
+  // ワークフローは決めた変数以外を受け付けないことがあるので text だけ送る
+  const body = isWorkflowWebhook(webhookUrl) ? { text } : { text, unfurl_links: false };
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, unfurl_links: false }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Slack への送信に失敗しました: ${res.status} ${await res.text()}`);
 }
