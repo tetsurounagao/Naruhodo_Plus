@@ -1,0 +1,457 @@
+/* 初代プレステ風スタイル（#91）。<html data-style="ps1"> のときだけ効く。
+   切り替えは lib/site-style.ts。いつものスタイル（globals.css ほか）には手を入れず、ここで上書きする。
+   - 色: globals.css の変数を濃紺ベースの値に差し替える（多くの部品はこれだけで切り替わる）
+   - 形: 角を落とし、左上が明るく右下が暗い立体枠＋黒い影のパネルにする
+   - 文字: 見出し・ボタン・数字はドット文字（DotGothic16）、本文は読みやすい BIZ UDゴシック
+   layout.tsx で最後に読み込むので、同じ強さのセレクタならこちらが勝つ。 */
+
+:root[data-style="ps1"] {
+  --bg: #07080d;
+  --card: #1c2246;
+  --border: #3a4378;
+  --border-strong: #5d6799;
+  --text: #e6eaf4;
+  --muted: #a3aedb;
+  --accent: #2f6fc0;
+  --accent-strong: #a8d4ff;
+  --accent-weak: #1f3466;
+  --ok: #3fbf6a;
+  --ok-strong: #9ff0b8;
+  --ok-weak: #123a26;
+  --danger: #ff6b6b;
+  --danger-strong: #ffb4b4;
+  --danger-weak: #4a1620;
+  --unsure: #ffc23d;
+  --unsure-strong: #ffe7a8;
+  --unsure-weak: #3d3010;
+  --flame: #ff9a4d;
+  --flame-strong: #ffb877;
+  --flame-weak: #3a2410;
+  --gold: #ffd36b;
+  --pink: #ff8fb8;
+  --blue: #7fdcff;
+  --blue-weak: #16244a;
+  --code-bg: #04050a;
+  --code-fg: #d7dcf0;
+  --marker: rgba(255, 211, 107, 0.3);
+  --sticky-yellow: #2f2c18;
+  --sticky-pink: #33182a;
+  --tape: transparent;
+  --bulb-0: #5d6799;
+  --cal-0: #11152c;
+  --cal-1: #1f4f7a;
+  --cal-2: #2f86b8;
+  --cal-3: #58b8e8;
+  --cal-4: #7fdcff;
+  --radius: 0;
+  --radius-sm: 0;
+  /* ps1 専用: 立体枠の明るい辺・暗い辺、見出しの金色、黒い影 */
+  --ps-hi: #9aa6d8;
+  --ps-lo: #10142a;
+  --ps-gold: #ffd36b;
+  --ps-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --font-body: var(--font-ud), "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-pixel: var(--font-dot), "Osaka-Mono", monospace;
+  color-scheme: dark;
+}
+
+/* 背景: 上からほのかに光る濃紺＋走査線（＋模様は消す） */
+[data-style="ps1"] body {
+  font-weight: 400;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% -10%, #2a3366 0%, rgba(20, 24, 52, 0) 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+  background-attachment: fixed;
+}
+
+/* ドット文字にするもの（本文以外） */
+[data-style="ps1"] h1,
+[data-style="ps1"] h2,
+[data-style="ps1"] h3,
+[data-style="ps1"] button,
+[data-style="ps1"] a.button-link,
+[data-style="ps1"] .site-logo,
+[data-style="ps1"] header.site nav a,
+[data-style="ps1"] .site-status,
+[data-style="ps1"] .tag,
+[data-style="ps1"] .kbd,
+[data-style="ps1"] summary,
+[data-style="ps1"] .today-count-num,
+[data-style="ps1"] .backlog-num,
+[data-style="ps1"] .stat-num,
+[data-style="ps1"] .play-score,
+[data-style="ps1"] .hud-score,
+[data-style="ps1"] .combo-badge,
+[data-style="ps1"] .result-stamp,
+[data-style="ps1"] .rank-stamp,
+[data-style="ps1"] .points-float {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+[data-style="ps1"] h1,
+[data-style="ps1"] h2,
+[data-style="ps1"] h3 {
+  text-shadow: 2px 2px 0 #000;
+}
+
+/* 見出しの頭: ＋ の代わりに ▼（金色） */
+[data-style="ps1"] main.container h2::before {
+  content: "▼";
+  font-family: var(--font-pixel);
+  color: var(--ps-gold);
+}
+
+/* ---- パネル（カード） ---- */
+[data-style="ps1"] .card {
+  background: linear-gradient(180deg, rgba(64, 76, 120, 0.72), rgba(30, 36, 66, 0.82));
+  border: 2px solid;
+  border-color: var(--ps-hi) var(--ps-lo) var(--ps-lo) var(--ps-hi);
+  border-radius: 0;
+  box-shadow: var(--ps-shadow);
+}
+
+/* ---- ヘッダー ---- */
+[data-style="ps1"] header.site {
+  background: linear-gradient(180deg, #3a4574, #1a2044);
+  border-bottom: 2px solid var(--ps-lo);
+  box-shadow: 0 2px 0 var(--ps-hi) inset, 0 4px 0 rgba(0, 0, 0, 0.5);
+}
+[data-style="ps1"] .site-logo {
+  font-size: 1.3rem;
+  text-shadow: 2px 2px 0 #000;
+}
+[data-style="ps1"] .site-logo-mark {
+  border-radius: 0;
+  background: linear-gradient(180deg, #ffe7a8, #ffc23d);
+  color: #07080d;
+  text-shadow: none;
+  box-shadow: 3px 3px 0 #000;
+}
+[data-style="ps1"] header.site nav a {
+  position: relative;
+  border-radius: 0;
+  color: var(--text);
+  text-shadow: 2px 2px 0 #000;
+}
+[data-style="ps1"] header.site nav a:hover {
+  background: rgba(127, 220, 255, 0.12);
+  color: var(--text);
+}
+/* 選択中のメニュー: 左に点滅する ▶ カーソル（点滅は 1 秒に 1 回） */
+[data-style="ps1"] header.site nav a[aria-current="page"] {
+  padding-left: 30px;
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(127, 220, 255, 0.32), rgba(127, 220, 255, 0));
+}
+[data-style="ps1"] header.site nav a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  margin-top: -6px;
+  border-left: 11px solid var(--ps-gold);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  animation: ps-cursor 1s steps(1) infinite;
+}
+@keyframes ps-cursor {
+  50% {
+    opacity: 0.25;
+  }
+}
+[data-style="ps1"] .site-today-bar {
+  border-radius: 0;
+  background: #04050a;
+  border: 1px solid var(--border-strong);
+}
+[data-style="ps1"] .style-toggle {
+  border-radius: 0;
+  background: #04050a;
+  border-color: var(--ps-lo) var(--ps-hi) var(--ps-hi) var(--ps-lo);
+}
+[data-style="ps1"] .style-toggle button {
+  border-radius: 0;
+}
+[data-style="ps1"] .style-toggle button[aria-pressed="true"] {
+  color: #07080d;
+  background: linear-gradient(180deg, #ffe7a8, #ffc23d);
+  box-shadow: none;
+}
+
+/* ---- ボタン ---- */
+[data-style="ps1"] button {
+  border: 2px solid;
+  border-color: var(--ps-hi) var(--ps-lo) var(--ps-lo) var(--ps-hi);
+  border-radius: 0;
+  background: linear-gradient(180deg, #46528c, #252c55);
+  color: var(--text);
+  text-shadow: 2px 2px 0 #000;
+  box-shadow: 3px 3px 0 #000;
+}
+[data-style="ps1"] button:not(:disabled):hover {
+  background: linear-gradient(180deg, #56649e, #2e3664);
+}
+[data-style="ps1"] button:not(:disabled):active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #000;
+}
+/* 主役のボタン: 金色 */
+[data-style="ps1"] button.primary,
+[data-style="ps1"] a.button-link {
+  color: #07080d;
+  text-shadow: none;
+  background: linear-gradient(180deg, #ffe7a8, #ffc23d);
+  border: 2px solid;
+  border-color: #fff4d1 #8a5a00 #8a5a00 #fff4d1;
+  border-radius: 0;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] button.primary:not(:disabled):hover,
+[data-style="ps1"] a.button-link:hover {
+  color: #07080d;
+  background: linear-gradient(180deg, #fff0c4, #ffcb55);
+  filter: none;
+}
+[data-style="ps1"] a.button-link:active,
+[data-style="ps1"] button.primary:not(:disabled):active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #000;
+}
+[data-style="ps1"] a.button-link.secondary,
+[data-style="ps1"] .today-cta a.button-link.secondary {
+  color: var(--text);
+  text-shadow: 2px 2px 0 #000;
+  background: linear-gradient(180deg, #46528c, #252c55);
+  border-color: var(--ps-hi) var(--ps-lo) var(--ps-lo) var(--ps-hi);
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] a.button-link.secondary:hover {
+  color: #ffffff;
+  background: linear-gradient(180deg, #56649e, #2e3664);
+}
+[data-style="ps1"] .today-cta a.button-link,
+[data-style="ps1"] .today-cta a.button-link:active,
+[data-style="ps1"] .today-cta a.button-link.secondary:active {
+  border-radius: 0;
+}
+[data-style="ps1"] .today-cta a.button-link:active,
+[data-style="ps1"] .today-cta a.button-link.secondary:active {
+  box-shadow: 2px 2px 0 #000;
+}
+[data-style="ps1"] .site-logout {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+}
+[data-style="ps1"] button:focus-visible,
+[data-style="ps1"] a:focus-visible {
+  outline-color: var(--ps-gold);
+}
+
+/* ---- 入力欄: へこんだ枠 ---- */
+[data-style="ps1"] input,
+[data-style="ps1"] select,
+[data-style="ps1"] textarea,
+[data-style="ps1"] .filters input[type="text"],
+[data-style="ps1"] .filters input[type="search"] {
+  color: var(--text);
+  background: #0b0e1e;
+  border: 2px solid;
+  border-color: var(--ps-lo) var(--border-strong) var(--border-strong) var(--ps-lo);
+  border-radius: 0;
+}
+
+/* ---- タグ・キー表示 ---- */
+[data-style="ps1"] .tag {
+  border-radius: 0;
+  border: 2px solid var(--border-strong);
+  background: #0b0e1e;
+  color: var(--text);
+}
+[data-style="ps1"] .kbd {
+  border-radius: 0;
+}
+
+/* ---- 付箋・テープ・波線・蛍光ペン: ゲームのウィンドウ風に置き換える ---- */
+[data-style="ps1"] .sticky,
+[data-style="ps1"] .sticky.tilt-right {
+  transform: none;
+  border-radius: 0;
+  border: 2px solid;
+  border-color: #c9b066 #2a2410 #2a2410 #c9b066;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] .sticky.pink {
+  border-color: #c97aa0 #2a1020 #2a1020 #c97aa0;
+}
+[data-style="ps1"] .sticky::before,
+[data-style="ps1"] .taped::before {
+  content: none;
+}
+[data-style="ps1"] .squiggle::after {
+  height: 4px;
+  margin-top: 6px;
+  background: repeating-linear-gradient(90deg, var(--ps-gold) 0 8px, transparent 8px 12px);
+}
+[data-style="ps1"] .marker {
+  background: none;
+  color: var(--ps-gold);
+}
+
+/* ---- コード ---- */
+[data-style="ps1"] .md pre {
+  border-radius: 0;
+  border: 2px solid;
+  border-color: var(--ps-lo) var(--border-strong) var(--border-strong) var(--ps-lo);
+}
+
+/* ---- 解答カレンダー ---- */
+[data-style="ps1"] .actcal-cell {
+  border-radius: 0;
+}
+
+/* ---- /play: 選択肢 ---- */
+[data-style="ps1"] ul.choices.choice-tiles button {
+  font-family: var(--font-body);
+  font-weight: 700;
+  text-shadow: none;
+  background: rgba(10, 12, 28, 0.7);
+  border: 2px solid;
+  border-color: var(--border-strong) var(--ps-lo) var(--ps-lo) var(--border-strong);
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] ul.choices.choice-tiles button:not(:disabled):hover {
+  background: rgba(40, 48, 96, 0.8);
+  border-color: var(--ps-hi) var(--ps-lo) var(--ps-lo) var(--ps-hi);
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] ul.choices.choice-tiles button:not(:disabled):active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #000;
+}
+/* 選択中 = 金色に光る */
+[data-style="ps1"] ul.choices.choice-tiles button.selected,
+[data-style="ps1"] ul.choices.choice-tiles button.selected:not(:disabled):hover {
+  background: linear-gradient(90deg, rgba(255, 211, 107, 0.32), rgba(255, 211, 107, 0.06));
+  border-color: #ffe7a8 #7a5a10 #7a5a10 #ffe7a8;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] ul.choices.choice-tiles button.correct,
+[data-style="ps1"] ul.choices.choice-tiles button.correct:disabled {
+  background: var(--ok-weak);
+  border-color: #9ff0b8 #0a2a18 #0a2a18 #9ff0b8;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] ul.choices.choice-tiles button.wrong,
+[data-style="ps1"] ul.choices.choice-tiles button.wrong:disabled {
+  background: var(--danger-weak);
+  border-color: #ffb4b4 #2a0a10 #2a0a10 #ffb4b4;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] .choice-tiles .choice-key {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  border-radius: 0;
+  background: #0b0e1e;
+  border: 2px solid var(--ps-hi);
+  color: var(--ps-gold);
+}
+[data-style="ps1"] .choice-tiles button.selected .choice-key {
+  color: #07080d;
+  background: var(--ps-gold);
+  border-color: #fff4d1;
+}
+[data-style="ps1"] .choice-tiles button.correct .choice-key {
+  color: #07080d;
+  background: var(--ok);
+  border-color: var(--ok-strong);
+}
+[data-style="ps1"] .choice-tiles button.wrong .choice-key {
+  color: #07080d;
+  background: var(--danger);
+  border-color: var(--danger-strong);
+}
+
+/* ---- /play: 回答ボタン・下の固定バー ---- */
+[data-style="ps1"] .answer-buttons-wrap .answer-buttons button,
+[data-style="ps1"] .answer-bar-reveal button,
+[data-style="ps1"] .answer-bar .answer-bar-next {
+  border-radius: 0;
+}
+[data-style="ps1"] .answer-buttons-wrap .answer-buttons button.answer-unsure,
+[data-style="ps1"] .answer-buttons-wrap .answer-buttons button.answer-unsure:not(:disabled):hover {
+  color: var(--unsure-strong);
+  background: var(--unsure-weak);
+  border-color: #c9a040 #2a2008 #2a2008 #c9a040;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] .answer-bar {
+  background: linear-gradient(180deg, rgba(40, 48, 90, 0.97), rgba(16, 20, 42, 0.98));
+  border-top: 2px solid var(--ps-hi);
+  box-shadow: 0 -4px 0 rgba(0, 0, 0, 0.5);
+}
+[data-style="ps1"] .answer-bar.ok {
+  background: linear-gradient(180deg, #1a4a30, var(--ok-weak));
+  border-top-color: var(--ok-strong);
+}
+[data-style="ps1"] .answer-bar.unsure {
+  background: linear-gradient(180deg, #4d3c14, var(--unsure-weak));
+  border-top-color: var(--unsure-strong);
+}
+[data-style="ps1"] .answer-bar.ng {
+  background: linear-gradient(180deg, #5a1c28, var(--danger-weak));
+  border-top-color: var(--danger-strong);
+}
+[data-style="ps1"] .answer-bar .result-stamp {
+  background: #04050a;
+}
+[data-style="ps1"] .answer-bar.ok .answer-bar-next,
+[data-style="ps1"] .answer-bar.unsure .answer-bar-next,
+[data-style="ps1"] .answer-bar.ng .answer-bar-next {
+  color: #07080d;
+  text-shadow: none;
+  box-shadow: var(--ps-shadow);
+}
+[data-style="ps1"] .answer-bar.ok .answer-bar-next {
+  border-color: #c4ffd6 #0a3a1c #0a3a1c #c4ffd6;
+}
+[data-style="ps1"] .answer-bar.unsure .answer-bar-next {
+  border-color: #fff4d1 #8a5a00 #8a5a00 #fff4d1;
+}
+[data-style="ps1"] .answer-bar.ng .answer-bar-next {
+  border-color: #ffd4d4 #5a0a10 #5a0a10 #ffd4d4;
+}
+
+/* ---- /play: 進み具合・コンボ・スコア ---- */
+[data-style="ps1"] .seg,
+[data-style="ps1"] .play-progress .seg {
+  border-radius: 0;
+}
+[data-style="ps1"] .combo-badge,
+[data-style="ps1"] .play-topbar .combo-badge {
+  border-radius: 0;
+}
+[data-style="ps1"] .play-settings-pop {
+  border-radius: 0;
+  background: linear-gradient(180deg, #2a3260, #161b38);
+  border: 2px solid;
+  border-color: var(--ps-hi) var(--ps-lo) var(--ps-lo) var(--ps-hi);
+  box-shadow: var(--ps-shadow);
+}
+
+/* 動きを減らす設定ではカーソルの点滅を止める */
+@media (prefers-reduced-motion: reduce) {
+  [data-style="ps1"] header.site nav a[aria-current="page"]::before {
+    animation: none;
+  }
+}
+
+/* ---- 文中のコード ---- */
+[data-style="ps1"] .md :not(pre) > code {
+  color: var(--blue);
+  background: #0b0e1e;
+  border-radius: 0;
+}

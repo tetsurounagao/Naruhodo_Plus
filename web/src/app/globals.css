@@ -49,6 +49,12 @@
   --bulb-2: #b88a00;
   --bulb-3-fill: #ffd43b;
   --bulb-3: #9a7000;
+  /* 解答カレンダーの草（0 = 解いていない日 〜 4 = たくさん解いた日） */
+  --cal-0: #ebedf0;
+  --cal-1: #9be9a8;
+  --cal-2: #40c463;
+  --cal-3: #30a14e;
+  --cal-4: #216e39;
   --radius: 16px;
   --radius-sm: 12px;
   --font-body: var(--font-rounded), system-ui, "Hiragino Maru Gothic ProN", sans-serif;
@@ -205,14 +211,41 @@ header.site nav a[aria-current="page"] {
   color: var(--muted);
   background: none;
 }
-/* スマホ: 2x2 の格子（ロゴ | 状態 / メニュー（横スクロール）| ログアウト） */
+/* スタイル切り替え（#91）: いつもの / プレステ */
+.style-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+}
+.style-toggle button {
+  padding: 3px 12px;
+  font-size: 0.78rem;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  background: none;
+  color: var(--muted);
+}
+.style-toggle button:not(:disabled):active {
+  transform: none;
+  box-shadow: none;
+}
+.style-toggle button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent-strong) 18%, transparent);
+}
+/* スマホ: 格子（ロゴ | 状態 / メニュー（横スクロール）| ログアウト / スタイル切り替え） */
 @media (max-width: 720px) {
   header.site {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "logo ."
-      "nav logout";
+      "nav logout"
+      "style style";
     gap: 6px 10px;
     padding: 8px 14px;
   }
@@ -231,6 +264,10 @@ header.site nav a[aria-current="page"] {
   }
   .site-logout {
     grid-area: logout;
+  }
+  .style-toggle {
+    grid-area: style;
+    justify-self: end;
   }
   .site-today-label {
     display: none;
