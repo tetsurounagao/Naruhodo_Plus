@@ -5,6 +5,7 @@ import "./styles/home.css";
 import "./styles/play.css";
 import "./styles/code.css";
 import "./styles/ps1.css";
+import "./styles/temple.css";
 import { SiteHeader } from "./_components/SiteHeader";
 import { STYLE_BOOT_SCRIPT } from "../lib/site-style-boot";
 
