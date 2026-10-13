@@ -66,7 +66,7 @@ function play(notes: [number, number][], type: OscillatorType = "sine", gain = 0
   }
 }
 
-export type FeedbackKind = "correct" | "unsure" | "wrong" | "combo" | "fanfare";
+export type FeedbackKind = "correct" | "unsure" | "wrong" | "combo" | "fanfare" | "jackpot";
 
 /** 効果音と振動。sound=false なら何もしない。 */
 export function feedback(kind: FeedbackKind, sound: boolean, combo = 0): void {
@@ -93,6 +93,26 @@ export function feedback(kind: FeedbackKind, sound: boolean, combo = 0): void {
     case "fanfare":
       play([[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.35]], "triangle");
       navigator.vibrate?.([20, 40, 20, 40, 60]);
+      break;
+    case "jackpot":
+      // リールが回る音 → 止まる 3 音 → 大当たりのファンファーレ
+      play(Array.from({ length: 16 }, (_, i) => [440 + (i % 4) * 110, 0.07] as [number, number]), "square", 0.03);
+      window.setTimeout(() => play([[784, 0.1]], "triangle"), 2000);
+      window.setTimeout(() => play([[880, 0.1]], "triangle"), 2350);
+      window.setTimeout(() => play([[988, 0.1]], "triangle"), 2700);
+      window.setTimeout(
+        () =>
+          play(
+            [
+              [523, 0.14], [659, 0.14], [784, 0.14], [1047, 0.2],
+              [784, 0.12], [1047, 0.12], [1319, 0.5],
+            ],
+            "triangle",
+            0.1,
+          ),
+        2900,
+      );
+      navigator.vibrate?.([60, 60, 60, 60, 200, 80, 400]);
       break;
   }
 }
