@@ -21,6 +21,11 @@ import { CloseIcon, FlameIcon } from "./PlayIcons";
 import { Confetti } from "./Confetti";
 import { SessionSummary } from "./SessionSummary";
 import { WithdrawPanel } from "./WithdrawPanel";
+import { JackpotOverlay } from "./JackpotOverlay";
+
+/** 何問連続で正解したら「大当たり」か、そのときのボーナス点 */
+const JACKPOT_COMBO = 10;
+const JACKPOT_BONUS = 100;
 import { feedback, useSoundOn } from "../../lib/feedback";
 import { comboTier, scoreTurn } from "../../lib/quiz-score";
 import { countByLocalDate, localDateKey } from "../../lib/streak";
@@ -99,6 +104,9 @@ export function QuizSession({
   const [comboPulse, setComboPulse] = useState(0);
   const [comboBroken, setComboBroken] = useState(false);
   const [burst, setBurst] = useState(0);
+  // 10 問連続正解の「大当たり」演出を出しているか
+  const [jackpot, setJackpot] = useState(false);
+  const closeJackpot = useCallback(() => setJackpot(false), []);
   const comboRef = useRef(0);
   const maxComboRef = useRef(0);
   // 取り下げ
@@ -137,6 +145,10 @@ export function QuizSession({
       const comboBefore = comboRef.current;
       const maxComboBefore = maxComboRef.current;
       const turn = scoreTurn(r.is_correct, confidence, comboBefore);
+      const solid = confidence === "sure" && r.is_correct;
+      const jackpotHit = solid && turn.combo === JACKPOT_COMBO;
+      // 大当たりのボーナスはこの問題の得点に足す（解いた後に取り下げたら一緒に外れる）
+      if (jackpotHit) turn.points += JACKPOT_BONUS;
       comboRef.current = turn.combo;
       maxComboRef.current = Math.max(maxComboBefore, turn.combo);
       setResult(r);
@@ -150,10 +162,19 @@ export function QuizSession({
       setComboBroken(turn.comboBroken);
       if (turn.combo >= 2 && r.is_correct && confidence === "sure") setComboPulse((n) => n + 1);
       // コンボの節目（5, 10, …）は紙吹雪と派手な音
-      const milestone = turn.combo >= 5 && turn.combo % 5 === 0 && confidence === "sure" && r.is_correct;
+      const milestone = solid && !jackpotHit && turn.combo >= 5 && turn.combo % 5 === 0;
       if (milestone) setBurst((n) => n + 1);
+      if (jackpotHit) setJackpot(true);
       feedback(
-        milestone ? "combo" : !r.is_correct ? "wrong" : confidence === "unsure" ? "unsure" : "correct",
+        jackpotHit
+          ? "jackpot"
+          : milestone
+            ? "combo"
+            : !r.is_correct
+              ? "wrong"
+              : confidence === "unsure"
+                ? "unsure"
+                : "correct",
         sound,
         turn.combo,
       );
@@ -322,6 +343,7 @@ export function QuizSession({
   return (
     <div className="play">
       {burst > 0 && <Confetti key={burst} count={40} />}
+      {jackpot && <JackpotOverlay bonus={JACKPOT_BONUS} onClose={closeJackpot} />}
 
       <div className="play-topbar">
         <Link href="/" className="play-icon-link" aria-label="やめる">

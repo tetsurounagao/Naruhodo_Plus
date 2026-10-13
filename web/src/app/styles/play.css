@@ -1002,3 +1002,251 @@ div.picked-rationale {
 .easy-button:not(:disabled):hover {
   background: var(--ok-weak);
 }
+
+/* ---------------------------------------------------------------------------
+ * 10 問連続正解の「大当たり」演出（パチンコ風）
+ * 点滅は 1 秒に 3 回未満（光過敏性発作への配慮）。視差効果を減らす設定では .reduced で止める。
+ * ------------------------------------------------------------------------- */
+.jackpot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #3b1d8f 0%, #170b3b 55%, #07041a 100%);
+  cursor: pointer;
+  animation: jp-in 0.25s ease-out;
+}
+@keyframes jp-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 後ろでぐるぐる回る光の筋 */
+.jp-rays {
+  position: absolute;
+  inset: -60%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 214, 0, 0.32) 0deg 9deg,
+    transparent 9deg 22deg
+  );
+  animation: jp-rotate 7s linear infinite;
+}
+@keyframes jp-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* 虹色に色が流れる枠（色相が滑らかに回るだけで点滅はしない）＋ゆっくりした明滅（約 1.5 回/秒） */
+.jp-frame {
+  position: absolute;
+  inset: 14px;
+  border-radius: 24px;
+  border: 10px solid transparent;
+  background:
+    linear-gradient(#0000, #0000) padding-box,
+    linear-gradient(90deg, #ff004c, #ff9a00, #ffe600, #2bff88, #00c8ff, #8b5cff, #ff004c) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation:
+    jp-hue 2.5s linear infinite,
+    jp-glow 0.66s ease-in-out infinite alternate;
+}
+@keyframes jp-hue {
+  to { filter: hue-rotate(360deg); }
+}
+@keyframes jp-glow {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+.jp-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  text-align: center;
+  /* リールが止まったあと（約 2.4 秒後）に画面が揺れる */
+  animation: jp-shake 0.45s 2.4s 3;
+}
+@keyframes jp-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  20% { transform: translate(-10px, 4px) rotate(-1.5deg); }
+  40% { transform: translate(9px, -6px) rotate(1.5deg); }
+  60% { transform: translate(-7px, 5px) rotate(-1deg); }
+  80% { transform: translate(6px, -3px) rotate(1deg); }
+}
+
+/* スロットのリール（1 つ 100px の記号を 30 個並べ、27 個目の「7」で止める） */
+.jp-reels {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffd700, #b8860b);
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.6), inset 0 -6px 0 rgba(0, 0, 0, 0.25);
+}
+.jp-reel {
+  width: 92px;
+  height: 100px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #e9e9e9, #ffffff 30%, #ffffff 70%, #e9e9e9);
+  box-shadow: inset 0 6px 10px rgba(0, 0, 0, 0.25);
+}
+.jp-strip {
+  animation: jp-spin 2s cubic-bezier(0.12, 0.7, 0.2, 1) forwards;
+}
+@keyframes jp-spin {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2600px); }
+}
+.jp-sym {
+  display: block;
+  height: 100px;
+  line-height: 100px;
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 800;
+  color: #3a3a3a;
+}
+.jp-sym.seven {
+  font-size: 66px;
+  color: #e11d48;
+  text-shadow: 0 3px 0 #7f1d1d, 0 0 14px rgba(225, 29, 72, 0.5);
+}
+
+/* 虹色の「大当たり！！」。1 文字ずつ弾んで出る */
+.jp-title {
+  margin: 8px 0 0;
+  font-size: clamp(54px, 13vw, 128px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+.jp-title span {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff004c, #ff9a00, #ffe600, #2bff88, #00c8ff, #8b5cff, #ff004c);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 3px #fff;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 18px rgba(255, 230, 0, 0.6));
+  animation:
+    jp-letter 0.6s cubic-bezier(0.2, 1.8, 0.4, 1) backwards,
+    jp-rainbow 1.6s linear infinite;
+}
+.jp-title span:nth-child(1) { animation-delay: 2.1s, 0s; }
+.jp-title span:nth-child(2) { animation-delay: 2.2s, 0s; }
+.jp-title span:nth-child(3) { animation-delay: 2.3s, 0s; }
+.jp-title span:nth-child(4) { animation-delay: 2.4s, 0s; }
+.jp-title span:nth-child(5) { animation-delay: 2.5s, 0s; }
+.jp-title span:nth-child(6) { animation-delay: 2.6s, 0s; }
+@keyframes jp-letter {
+  from { transform: translateY(-120px) scale(0.2) rotate(-25deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes jp-rainbow {
+  to { background-position: 300% 0; }
+}
+.jp-sub {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+  animation: jp-in 0.4s 2.8s backwards;
+}
+.jp-bonus {
+  margin: 0;
+  padding: 4px 20px;
+  border-radius: 999px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #4a2a00;
+  background: linear-gradient(180deg, #fff3a0, #ffd700);
+  box-shadow: 0 4px 0 #b8860b, 0 0 24px rgba(255, 215, 0, 0.7);
+  animation: jp-pop 0.5s 3s cubic-bezier(0.2, 1.8, 0.4, 1) backwards;
+}
+@keyframes jp-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.jp-close {
+  margin-top: 10px;
+  padding: 10px 26px;
+  font-size: 1rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: none;
+  animation: jp-in 0.4s 3.3s backwards;
+}
+.jp-close:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* 金のコインの雨 */
+.jp-coins {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.jp-coin {
+  position: absolute;
+  top: -48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff8c4 0 18%, #ffd700 40%, #b8860b 100%);
+  border: 2px solid #8a6200;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  opacity: 0;
+}
+.jp-coin-spin { animation-name: jp-fall; }
+.jp-coin-spin-rev { animation-name: jp-fall-rev; }
+@keyframes jp-fall {
+  0% { transform: translateY(0) rotateY(0); opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(110vh) rotateY(900deg); opacity: 0; }
+}
+@keyframes jp-fall-rev {
+  0% { transform: translateY(0) rotateY(0); opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(110vh) rotateY(-900deg); opacity: 0; }
+}
+
+/* 視差効果を減らす設定: 回転・明滅・揺れ・リールの回転を止め、最初から揃った状態で出す */
+.jackpot.reduced .jp-rays,
+.jackpot.reduced .jp-frame,
+.jackpot.reduced .jp-center,
+.jackpot.reduced .jp-title span,
+.jackpot.reduced .jp-sub,
+.jackpot.reduced .jp-bonus,
+.jackpot.reduced .jp-close {
+  animation: none;
+}
+.jackpot.reduced .jp-strip {
+  animation: none;
+  transform: translateY(-2600px);
+}
+
+@media (max-width: 720px) {
+  .jp-reel { width: 70px; height: 80px; }
+  .jp-sym { height: 80px; line-height: 80px; font-size: 34px; }
+  .jp-sym.seven { font-size: 50px; }
+  @keyframes jp-spin {
+    from { transform: translateY(0); }
+    to { transform: translateY(-2080px); }
+  }
+  .jackpot.reduced .jp-strip { transform: translateY(-2080px); }
+}
