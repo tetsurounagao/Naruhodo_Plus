@@ -29,6 +29,14 @@ export const env = {
   get groqModel() {
     return (process.env.GROQ_MODEL ?? "openai/gpt-oss-120b").trim();
   },
+  /** Slack の Incoming Webhook URL（毎日の成果通知・任意）。未設定なら空文字 = 送らない。 */
+  get slackWebhookUrl() {
+    return (process.env.SLACK_WEBHOOK_URL ?? "").trim();
+  },
+  /** Vercel Cron が Authorization: Bearer で送ってくる値。未設定なら空文字 = cron の API を閉じる。 */
+  get cronSecret() {
+    return (process.env.CRON_SECRET ?? "").trim();
+  },
 };
 
 // 苦手タグ判定の閾値（要件 9。暫定値、環境変数で変更可）

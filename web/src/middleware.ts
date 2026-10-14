@@ -4,11 +4,11 @@ import { updateSession } from "./lib/supabase/middleware";
 /**
  * - すべてのリクエストでセッション Cookie を更新する
  * - 未ログインで保護ページに来たら /login へ
- * - 未ログインで /api/* に来たら 401 JSON（/api/auth/*・/api/connect/* は除く）
+ * - 未ログインで /api/* に来たら 401 JSON（/api/auth/*・/api/connect/*・/api/cron/* は除く。cron は CRON_SECRET で守る）
  * - 環境変数未設定など Supabase クライアントを作れないときは /connect へ誘導
  */
 const PUBLIC_PATHS = ["/login", "/connect"];
-const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/connect/"];
+const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/connect/", "/api/cron/"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
