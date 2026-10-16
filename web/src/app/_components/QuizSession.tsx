@@ -7,7 +7,8 @@ import { shuffle } from "../../lib/shuffle";
 import { useRecallFirst } from "../../lib/recall-mode";
 import { MASTERY_LABELS, masteryOf, nextStreak } from "../../lib/mastery";
 import { daysBetween, nextInterval } from "../../lib/review-schedule";
-import type { AttemptResult, Confidence, QuizPublic } from "../../lib/types";
+import type { AnswerKey, AttemptResult, Confidence, QuizPublic } from "../../lib/types";
+import { dropPoints, recordAttempt, retryFailed, useAttemptQueue } from "../../lib/attempt-queue";
 import { Markdown } from "./Markdown";
 import { ExplainPopover } from "./ExplainPopover";
 import { SourceKnowledgeView } from "./SourceKnowledgeView";
@@ -126,6 +127,24 @@ export function QuizSession({
       .catch(() => {});
   }, []);
 
+  // 答え合わせ用の情報（#97）。出題する問題の分を裏で先に取っておき、ボタンを押した瞬間に正誤を出す。
+  // まだ取れていない問題は、従来どおりサーバーの採点を待つ
+  const keys = useRef(new Map<string, AnswerKey>());
+  const keysLoading = useRef(new Set<string>());
+  useEffect(() => {
+    const ids = quizzes.map((q) => q.id).filter((id) => !keys.current.has(id) && !keysLoading.current.has(id));
+    if (ids.length === 0) return;
+    for (const id of ids) keysLoading.current.add(id);
+    apiPost<{ keys: Record<string, AnswerKey> }>("/api/quizzes/keys", { ids })
+      .then((r) => {
+        for (const [id, k] of Object.entries(r.keys)) keys.current.set(id, k);
+      })
+      .catch((e: Error) => console.warn("[play] 答え合わせの準備に失敗（サーバーで採点します）:", e.message))
+      .finally(() => {
+        for (const id of ids) keysLoading.current.delete(id);
+      });
+  }, [quizzes]);
+
   const quiz = quizzes[index] as QuizPublic | undefined;
   const done = index >= quizzes.length;
   const hideChoices = recallFirst && !revealed && !result;
@@ -133,15 +152,10 @@ export function QuizSession({
 
   const submit = useCallback(async (confidence: Confidence) => {
     if (!quiz || !selected || result || busy) return;
-    setBusy(true);
     setError(null);
-    try {
-      const r = await apiPost<AttemptResult>("/api/attempts", {
-        quiz_id: quiz.id,
-        user_answer: selected,
-        confidence,
-      });
-      notifyAnswered();
+
+    /** 採点結果を画面に反映し、この問題の得点を返す。 */
+    const apply = (r: AttemptResult): number => {
       const comboBefore = comboRef.current;
       const maxComboBefore = maxComboRef.current;
       const turn = scoreTurn(r.is_correct, confidence, comboBefore);
@@ -149,12 +163,6 @@ export function QuizSession({
       const jackpotHit = solid && turn.combo === JACKPOT_COMBO;
       // 大当たりのボーナスはこの問題の得点に足す（解いた後に取り下げたら一緒に外れる）
       if (jackpotHit) turn.points += JACKPOT_BONUS;
-      // 貯めたポイントは神殿の木に捧げられる（#93）。記録に失敗しても解答の流れは止めない
-      if (turn.points > 0) {
-        apiPost("/api/points", { attempt_id: r.attempt_id, points: turn.points }).catch((e: Error) =>
-          console.warn("[points] 記録に失敗:", e.message),
-        );
-      }
       comboRef.current = turn.combo;
       maxComboRef.current = Math.max(maxComboBefore, turn.combo);
       setResult(r);
@@ -184,6 +192,36 @@ export function QuizSession({
         sound,
         turn.combo,
       );
+      return turn.points;
+    };
+
+    // 答え合わせの情報があれば、その場で正誤を出して記録（とポイント）は裏で送る
+    const key = keys.current.get(quiz.id);
+    if (key) {
+      const id = crypto.randomUUID();
+      const points = apply({ ...key, attempt_id: id, is_correct: selected === key.correct_answer });
+      notifyAnswered();
+      recordAttempt({ id, quiz_id: quiz.id, user_answer: selected, confidence, points }).catch((e: Error) =>
+        console.warn("[attempts] 記録に失敗:", e.message),
+      );
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const r = await apiPost<AttemptResult>("/api/attempts", {
+        quiz_id: quiz.id,
+        user_answer: selected,
+        confidence,
+      });
+      notifyAnswered();
+      const points = apply(r);
+      // 貯めたポイントは神殿の木に捧げられる（#93）。記録に失敗しても解答の流れは止めない
+      if (points > 0) {
+        apiPost("/api/points", { attempt_id: r.attempt_id, points }).catch((e: Error) =>
+          console.warn("[points] 記録に失敗:", e.message),
+        );
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -224,7 +262,9 @@ export function QuizSession({
       setAnswered((prev) => prev.slice(0, -1));
       setScore((s) => s - last.points);
       if (last.points > 0) {
-        apiPost(`/api/points/${last.result.attempt_id}`, null, "DELETE").catch((e: Error) =>
+        const attemptId = last.result.attempt_id;
+        // 裏で記録中なら、記録し終わってから消す
+        dropPoints(attemptId, () => apiPost(`/api/points/${attemptId}`, null, "DELETE")).catch((e: Error) =>
           console.warn("[points] 取り消しに失敗:", e.message),
         );
       }
@@ -327,7 +367,9 @@ export function QuizSession({
       );
     }
     return (
-      <SessionSummary
+      <>
+        <SaveFailed />
+        <SessionSummary
         answered={answered}
         score={score}
         maxCombo={maxCombo}
@@ -335,7 +377,8 @@ export function QuizSession({
         todayBefore={todayBefore}
         withdrawn={withdrawn}
         onRetry={answered.some(needsRetry) ? retryWrong : undefined}
-      />
+        />
+      </>
     );
   }
 
@@ -355,6 +398,7 @@ export function QuizSession({
     <div className="play">
       {burst > 0 && <Confetti key={burst} count={40} />}
       {jackpot && <JackpotOverlay bonus={JACKPOT_BONUS} onClose={closeJackpot} />}
+      <SaveFailed />
 
       <div className="play-topbar">
         <Link href="/" className="play-icon-link" aria-label="やめる">
@@ -501,5 +545,19 @@ export function QuizSession({
         />
       )}
     </div>
+  );
+}
+
+/** 裏で送った解答の記録が失敗したときの知らせと、送り直すボタン（#97）。 */
+function SaveFailed() {
+  const { failed } = useAttemptQueue();
+  if (failed === 0) return null;
+  return (
+    <p className="error save-failed" role="alert">
+      解答 {failed} 件を記録できませんでした。
+      <button type="button" onClick={retryFailed}>
+        もう一度送る
+      </button>
+    </p>
   );
 }

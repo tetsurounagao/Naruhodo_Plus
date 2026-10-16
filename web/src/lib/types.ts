@@ -89,6 +89,9 @@ export interface AttemptResult {
   rationales: Record<string, string>;
 }
 
+/** 解く前に渡しておく答え合わせ用の情報（/play でその場で正誤を出すため。#97） */
+export type AnswerKey = Omit<AttemptResult, "attempt_id" | "is_correct">;
+
 export type QuizStatusFilter = "all" | "unanswered" | "answered";
 export type QuizSortKey =
   | "created_desc"

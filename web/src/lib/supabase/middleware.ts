@@ -31,9 +31,12 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() はアクセストークンの署名をその場で検証する（ES256 の公開鍵はキャッシュされる）。
+  // getUser() と違って毎回 Supabase Auth に問い合わせないので、API 1 本ごとに 1 往復減る（#97）。
+  // 期限切れなら内部でトークンを更新し、Set-Cookie は setAll で引き継がれる
+  const { data } = await supabase.auth.getClaims();
+  const sub = data?.claims?.sub;
+  const user = typeof sub === "string" && sub ? { id: sub } : null;
 
   // 検証済みユーザー ID を下流の Route Handler へ渡す（requireUser がこれを信頼する）。
   // getUser() 中に更新された可能性のある Set-Cookie は引き継ぐ。

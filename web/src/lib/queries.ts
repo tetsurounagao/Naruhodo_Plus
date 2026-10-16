@@ -5,7 +5,9 @@ import { daysBetween, nextInterval, reviewInfo } from "./review-schedule";
 import { NEW_PER_DAY, buildTerm, forgettingRisk, startOfLocalDay } from "./term";
 import { normalizeTags } from "./normalize-tags";
 import { masteryOf, type Mastery } from "./mastery";
+import { MAX_POINTS_PER_ANSWER, UNSURE_MAX_POINTS } from "./tree";
 import type {
+  AnswerKey,
   AttemptResult,
   HomeSummary,
   MasteryGroup,
@@ -255,61 +257,94 @@ export async function getQuizForAnswering(id: string): Promise<QuizPublic | null
   return { ...toQuizPublic(row, agg), links };
 }
 
-/** 解答を採点し履歴に記録する。正誤判定はここ（サーバー）で行う。 */
+/** 選択肢の理由（rationale）を、選択肢 id → 理由 の表にする。理由が無い選択肢は含めない。 */
+function rationalesOf(choices: QuizChoice[] | null): Record<string, string> {
+  const rationales: Record<string, string> = {};
+  for (const c of choices ?? []) {
+    if (typeof c.rationale === "string" && c.rationale.trim()) rationales[c.id] = c.rationale;
+  }
+  return rationales;
+}
+
+/**
+ * 解答を採点し履歴に記録する。正誤判定はここ（サーバー、DB 関数 record_attempt）で行う。
+ * 採点・記録・last_answered_at の更新・獲得ポイントの記録を 1 往復で済ませる（#97）。
+ * id はブラウザで作った解答 id。同じ id で送り直されても二重に記録しない。
+ * points は /play の得点（コンボ・大当たり込み）。DB 関数が解答の中身と照らして上限を確かめる。
+ */
 export async function gradeAndRecord(
   quizId: string,
   userAnswer: string,
   confidence: Confidence,
+  opts: { id?: string; points?: number } = {},
 ): Promise<AttemptResult> {
-  const supabase = getSupabaseAdmin();
-  const quiz = must(
-    await supabase
-      .from("quizzes")
-      .select("correct_answer, explanation, choices, knowledge_items(question, answer, context)")
-      .eq("id", quizId)
-      .maybeSingle(),
-    "quiz 採点用取得",
-  ) as {
+  const res = await getSupabaseAdmin().rpc("record_attempt", {
+    p_id: opts.id ?? crypto.randomUUID(),
+    p_quiz_id: quizId,
+    p_user_answer: userAnswer,
+    p_confidence: confidence,
+    p_points: opts.points ?? 0,
+    p_max_points: MAX_POINTS_PER_ANSWER,
+    p_unsure_max: UNSURE_MAX_POINTS,
+  });
+  if (res.error) {
+    const m = res.error.message;
+    if (m.includes("quiz not found")) throw new Error("quiz not found");
+    if (m.includes("invalid user_answer")) throw new Error("invalid user_answer");
+    if (m.includes("points exceed cap")) throw new Error("points exceed cap");
+    throw new Error(`解答の記録: ${m}`);
+  }
+  const r = res.data as {
+    attempt_id: string;
+    is_correct: boolean;
     correct_answer: string;
     explanation: string | null;
-    choices: QuizChoice[];
-    knowledge_items: SourceKnowledge | null;
-  } | null;
-
-  if (!quiz) throw new Error("quiz not found");
-
-  const validIds = new Set((quiz.choices ?? []).map((c) => c.id));
-  if (!validIds.has(userAnswer)) throw new Error("invalid user_answer");
-
-  const isCorrect = userAnswer === quiz.correct_answer;
-  const now = new Date().toISOString();
-
-  const attempt = must(
-    await supabase
-      .from("quiz_attempts")
-      .insert({ quiz_id: quizId, user_answer: userAnswer, is_correct: isCorrect, confidence })
-      .select("id")
-      .single(),
-    "quiz_attempts 記録",
-  ) as { id: string };
-  must(
-    await supabase.from("quizzes").update({ last_answered_at: now }).eq("id", quizId).select("id").single(),
-    "last_answered_at 更新",
-  );
-
-  const rationales: Record<string, string> = {};
-  for (const c of quiz.choices ?? []) {
-    if (typeof c.rationale === "string" && c.rationale.trim()) rationales[c.id] = c.rationale;
-  }
-
-  return {
-    attempt_id: attempt.id,
-    is_correct: isCorrect,
-    correct_answer: quiz.correct_answer,
-    explanation: quiz.explanation,
-    source_knowledge: quiz.knowledge_items ?? null,
-    rationales,
+    choices: QuizChoice[] | null;
+    source_knowledge: SourceKnowledge | null;
   };
+  return {
+    attempt_id: r.attempt_id,
+    is_correct: r.is_correct,
+    correct_answer: r.correct_answer,
+    explanation: r.explanation,
+    source_knowledge: r.source_knowledge ?? null,
+    rationales: rationalesOf(r.choices),
+  };
+}
+
+/** 一度に答え合わせ用の情報を渡す問題数の上限 */
+const ANSWER_KEYS_MAX = 100;
+
+/**
+ * /play でその場で正誤を出すための答え合わせ用の情報（#97）。出題中の問題の分だけ、解く前に渡す。
+ * 自分用のツールなので、開発者ツールで正解が見えることは許容している（記録はサーバーで採点し直す）。
+ */
+export async function answerKeys(ids: string[]): Promise<Record<string, AnswerKey>> {
+  const unique = [...new Set(ids)].slice(0, ANSWER_KEYS_MAX);
+  if (unique.length === 0) return {};
+  const rows = must(
+    await getSupabaseAdmin()
+      .from("quizzes")
+      .select("id, correct_answer, explanation, choices, knowledge_items(question, answer, context)")
+      .in("id", unique),
+    "答え合わせ用の情報の取得",
+  ) as unknown as {
+    id: string;
+    correct_answer: string;
+    explanation: string | null;
+    choices: QuizChoice[] | null;
+    knowledge_items: SourceKnowledge | null;
+  }[];
+  const keys: Record<string, AnswerKey> = {};
+  for (const r of rows) {
+    keys[r.id] = {
+      correct_answer: r.correct_answer,
+      explanation: r.explanation,
+      source_knowledge: r.knowledge_items ?? null,
+      rationales: rationalesOf(r.choices),
+    };
+  }
+  return keys;
 }
 
 /**
