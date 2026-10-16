@@ -20,7 +20,6 @@ export default function TemplePage() {
   const [near, setNear] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [levelUp, setLevelUp] = useState<{ from: number; to: number } | null>(null);
   const [failed3d, setFailed3d] = useState(false);
   const sound = useSoundOn();
 
@@ -86,12 +85,6 @@ export default function TemplePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [near, open, tree]);
 
-  useEffect(() => {
-    if (!levelUp) return;
-    const id = window.setTimeout(() => setLevelUp(null), 2800);
-    return () => window.clearTimeout(id);
-  }, [levelUp]);
-
   const offer = useCallback(
     async (amount: number) => {
       if (!tree || busy) return;
@@ -100,17 +93,16 @@ export default function TemplePage() {
       try {
         const next = await apiPost<TreeInfo>("/api/tree/offer", { amount });
         setOpen(false);
-        scene.current?.playOffering();
+        // 所持ポイントはすぐ減らし、木のレベルは光が吸い込まれてから上げる
+        setTree({ ...next, level: tree.level });
         feedback("correct", sound);
-        // 光の粒が木に届いたころに育てる
-        window.setTimeout(() => {
-          setTree(next);
-          if (next.level > tree.level) {
-            scene.current?.setLevel(next.level, true);
-            setLevelUp({ from: tree.level, to: next.level });
-            feedback("combo", sound, 10);
-          }
-        }, 1300);
+        // アバターから白い光の粒が出て木に吸い込まれる → 吸い込み終わったら、木が白く光って次の大きさへ
+        await (scene.current?.playOffering(amount) ?? Promise.resolve());
+        setTree(next);
+        if (next.level > tree.level) {
+          scene.current?.setLevel(next.level, true);
+          feedback("combo", sound, 10);
+        }
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -166,15 +158,6 @@ export default function TemplePage() {
         </p>
       )}
 
-      {levelUp && (
-        <div className="temple-levelup" role="status">
-          <span className="temple-levelup-title">LEVEL UP!</span>
-          <span className="temple-levelup-sub">
-            Lv {levelUp.from} → Lv {levelUp.to}
-          </span>
-        </div>
-      )}
-
       {near && !open && tree && (
         <div className="temple-action">
           {tree.offerable > 0 ? (
@@ -218,6 +201,7 @@ function OfferPanel({
       options.push({ label, amount });
   };
   add("100 pt", 100);
+  add("500 pt", 500);
   add("1,000 pt", 1000);
   if (!tree.maxed) add(`次のレベルまで（${tree.toNext.toLocaleString()} pt）`, tree.toNext);
   add(`全部（${tree.offerable.toLocaleString()} pt）`, tree.offerable);
@@ -229,7 +213,7 @@ function OfferPanel({
           ▼ ポイントを捧げる
         </h2>
         <p className="temple-panel-desc">
-          所持 {tree.balance.toLocaleString()} pt ／ 1,000 pt で木が 1 レベル育ちます
+          所持 {tree.balance.toLocaleString()} pt ／ {POINTS_PER_LEVEL} pt で木が 1 レベル育ちます
         </p>
         <ul className="temple-options">
           {options.map((o, i) => (

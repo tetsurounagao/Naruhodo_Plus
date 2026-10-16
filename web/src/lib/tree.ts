@@ -1,8 +1,8 @@
 /**
  * 神殿の木の育ち方（#93）— 差し替え可能な独立ユニット（純関数のみ。DB は見ない）。
- * 捧げたポイントの合計（経験値）からレベルを出す。1000 pt で 1 レベル、Lv1 から始まり Lv99 が上限。
+ * 捧げたポイントの合計（経験値）からレベルを出す。100 pt で 1 レベル、Lv1 から始まり Lv99 が上限。
  */
-export const POINTS_PER_LEVEL = 1000;
+export const POINTS_PER_LEVEL = 100;
 export const TREE_MAX_LEVEL = 99;
 /** Lv99 に届く経験値。これ以上は捧げられない */
 export const TREE_MAX_EXP = (TREE_MAX_LEVEL - 1) * POINTS_PER_LEVEL;
@@ -19,7 +19,7 @@ export interface TreeState {
 
 export interface TreeInfo extends TreeState {
   level: number;
-  /** 今のレベルに入ってから捧げた量（0〜999） */
+  /** 今のレベルに入ってから捧げた量（0〜99） */
   intoLevel: number;
   /** 次のレベルまであと何 pt（Lv99 なら 0） */
   toNext: number;

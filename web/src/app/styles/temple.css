@@ -289,47 +289,6 @@
   }
 }
 
-/* ---- LEVEL UP ---- */
-.temple-levelup {
-  position: absolute;
-  top: 13%;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  pointer-events: none;
-  animation: tp-levelup 2.8s steps(14) forwards;
-}
-.temple-levelup-title {
-  font-size: clamp(2rem, 8vw, 3.4rem);
-  color: var(--tp-gold);
-  text-shadow:
-    3px 3px 0 #7a4a00,
-    6px 6px 0 #000;
-}
-.temple-levelup-sub {
-  font-size: 1.2rem;
-  color: #fff;
-  text-shadow: 2px 2px 0 #000;
-}
-@keyframes tp-levelup {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  15%,
-  80% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-  }
-}
-
 /* ---- スマホのスティック（指で操作する端末だけ） ---- */
 .temple-stick {
   display: none;
