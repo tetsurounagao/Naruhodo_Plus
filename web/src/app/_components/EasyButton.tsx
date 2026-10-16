@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiPost } from "../../lib/client";
+import { whenRecorded } from "../../lib/attempt-queue";
 
 /**
  * 「簡単すぎた」（Anki の Easy）。自信ありで正解したあとにだけ出す。
@@ -15,6 +16,8 @@ export function EasyButton({ attemptId, onDone }: { attemptId: string; onDone: (
     setBusy(true);
     setError(false);
     try {
+      // /play では解答を裏で記録しているので、記録し終わるのを待つ（#97）
+      await whenRecorded(attemptId);
       await apiPost(`/api/attempts/${attemptId}`, { easy: true }, "PATCH");
       onDone();
     } catch {
