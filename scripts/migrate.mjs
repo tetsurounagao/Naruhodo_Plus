@@ -51,6 +51,11 @@ async function main() {
         applied_at timestamptz not null default now()
       )
     `);
+    // 台帳は anon / authenticated から読み書きさせない。ポリシーは作らない（全拒否）。
+    // 持ち主の postgres（このスクリプト）と service role は RLS をバイパスするので影響なし。
+    await client.query(
+      "alter table public._naruhodo_migrations enable row level security",
+    );
 
     const applied = new Set(
       (await client.query("select name from public._naruhodo_migrations")).rows.map(
